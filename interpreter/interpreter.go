@@ -281,15 +281,69 @@ func (i *Interpreter) VisitVariable(expr *Variable) interface{} {
 }
 
 func (i *Interpreter) VisitLogical(expr *Logical) interface{} {
-	return nil
+	left := expr.Left.Accept(i).(*result)
+	if left.IsError() {
+		return left
+	}
+
+	if expr.Operator.TokenType == TK_OR {
+		if left.IsTruthy() {
+			return Result(true)
+		}
+
+		right := expr.Right.Accept(i).(*result)
+		if right.IsError() {
+			return right
+		}
+
+		return Result(right.IsTruthy())
+	} else if expr.Operator.TokenType == TK_AND {
+		right := expr.Right.Accept(i).(*result)
+		if right.IsError() {
+			return right
+		}
+
+		return Result(left.IsTruthy() && right.IsTruthy())
+	} else {
+		return i.error(E_UNEXPECTED_OPERATOR, expr.Operator, fmt.Sprintf("unexpected operator %s", expr.Operator.Lexeme))
+	}
 }
 
 func (i *Interpreter) VisitIfStmt(expr *IfStmt) interface{} {
-	return nil
+	rCond := expr.Condition.Accept(i).(*result)
+	if rCond.IsError() {
+		return rCond
+	}
+
+	if rCond.IsTruthy() {
+		return expr.ThenBranch.Accept(i)
+	} else {
+		if expr.ElseBranch != nil {
+			return expr.ElseBranch.Accept(i)
+		}
+	}
+
+	return Void
 }
 
 func (i *Interpreter) VisitWhileStmt(expr *WhileStmt) interface{} {
-	return nil
+	for {
+		rCond := expr.Condition.Accept(i).(*result)
+		if rCond.IsError() {
+			return rCond
+		}
+
+		if !rCond.IsTruthy() {
+			break
+		}
+
+		rBody := expr.Body.Accept(i).(*result)
+		if rBody.IsError() {
+			return rBody
+		}
+	}
+
+	return Void
 }
 
 func (i *Interpreter) VisitExprStmt(stmt *ExprStmt) interface{} {

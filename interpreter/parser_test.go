@@ -87,6 +87,9 @@ func TestParseExpressions(t *testing.T) {
 		{"a == b", "(== (var a) (var b))"},
 		{"a = 1", "(= (var a) 1)"},
 		{"a = b = c = 1", "(= (var a) (= (var b) (= (var c) 1)))"},
+		{"false or true", "(or false true)"},
+		{"false and true", "(and false true)"},
+		{"false or false or false and true", "(or (or false false) (and false true))"},
 	}
 
 	for _, test := range tests {
@@ -104,6 +107,26 @@ func TestParseStatements(t *testing.T) {
 		{"var a;", "(scope (def a))"},
 		{"var a = \"test\";", "(scope (def a \"test\"))"},
 		{"{ 1; {2 ;}}", "(scope (scope 1 (scope 2)))"},
+	}
+
+	for _, test := range tests {
+		runParseStmt(t, test.expression, test.expected)
+	}
+}
+
+func TestParseControlFlowStatements(t *testing.T) {
+	tests := []struct {
+		expression string
+		expected   string
+	}{
+		{"if (true) 1; else 2;", "(scope (if true 1 2))"},
+		{"if (3 + 3 > 1) {1; 2;} else {1; 2;}", "(scope (if (> (+ 3 3) 1) (scope 1 2) (scope 1 2)))"},
+		{"while (true) {1; 2;}", "(scope (while true (scope 1 2)))"},
+		{"while (true) 1;", "(scope (while true 1))"},
+		{"for (;;) 1;", "(scope (while true 1))"},
+		{"for (;;) {1;}", "(scope (while true (scope 1)))"},
+		{"for (var i = 0; i < 10; i = i + 1) print i;", "(scope (scope (def i 0) (while (< (var i) 10) (scope (print (var i)) (= (var i) (+ (var i) 1))))))"},
+		{"for (var i = 0; i < 10;) print i;", "(scope (scope (def i 0) (while (< (var i) 10) (print (var i)))))"},
 	}
 
 	for _, test := range tests {

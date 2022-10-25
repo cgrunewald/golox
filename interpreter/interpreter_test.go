@@ -57,6 +57,11 @@ func TestInterpretExpressions(t *testing.T) {
 		{"4 > 3", true, E_NO_ERROR},
 		{"\"a\" < \"b\"", true, E_NO_ERROR},
 		{"5 / 0", nil, E_DIVIDE_BY_ZERO},
+		{"true and true", true, E_NO_ERROR},
+		{"true and false", false, E_NO_ERROR},
+		{"false and false", false, E_NO_ERROR},
+		{"false or false", false, E_NO_ERROR},
+		{"true and false", false, E_NO_ERROR},
 	}
 
 	for _, test := range tests {
@@ -91,6 +96,40 @@ func TestPrograms(t *testing.T) {
 			print a;
 			`,
 			[]string{"3", "1"},
+		},
+		{
+			`
+			if (true) {
+				print 1;
+			}	else {
+				print 2;
+			}
+
+			if (false) {
+				print 2;
+			} else {
+				print 1;
+			}
+
+			if (false) print 1; if (false) print 2; else print 3;
+			`,
+			[]string{"1", "1", "3"},
+		},
+		{
+			`
+			for (var i = 0; i < 3; i = i + 1) print i;
+			`,
+			[]string{"0", "1", "2"},
+		},
+		{
+			`
+			var i = 3;
+			while (i >= 0) {
+				print i;
+				i = i - 1;
+			}
+			`,
+			[]string{"3", "2", "1", "0"},
 		},
 	}
 

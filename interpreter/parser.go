@@ -51,7 +51,141 @@ func (p *Parser) statement() (Stmt, error) {
 		return p.blockStmt()
 	}
 
+	if p.match(TK_FOR) {
+		return p.forStmt()
+	}
+
+	if p.match(TK_WHILE) {
+		return p.whileStmt()
+	}
+
+	if p.match(TK_IF) {
+		return p.ifStmt()
+	}
+
 	return p.exprStmt()
+}
+
+func (p *Parser) ifStmt() (Stmt, error) {
+	_, errPL := p.consume(TK_LEFT_PAREN, "expected left parenthesis")
+	if errPL != nil {
+		return nil, errPL
+	}
+
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, errPR := p.consume(TK_RIGHT_PAREN, "expected right parenthesis")
+	if errPR != nil {
+		return nil, errPR
+	}
+
+	thenBranch, errThen := p.statement()
+	if errThen != nil {
+		return nil, errThen
+	}
+
+	var elseBranch Stmt
+	var errElse error
+	if p.match(TK_ELSE) {
+		elseBranch, errElse = p.statement()
+		if errElse != nil {
+			return nil, errElse
+		}
+	}
+
+	return &IfStmt{Condition: expr, ThenBranch: thenBranch, ElseBranch: elseBranch}, nil
+}
+
+func (p *Parser) whileStmt() (Stmt, error) {
+	_, errPL := p.consume(TK_LEFT_PAREN, "expected left parenthesis")
+	if errPL != nil {
+		return nil, errPL
+	}
+
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, errPR := p.consume(TK_RIGHT_PAREN, "expected right parenthesis")
+	if errPR != nil {
+		return nil, errPR
+	}
+
+	stmt, errStmt := p.statement()
+	if errStmt != nil {
+		return nil, errStmt
+	}
+
+	return &WhileStmt{Condition: expr, Body: stmt}, nil
+}
+
+func (p *Parser) forStmt() (Stmt, error) {
+	_, errPL := p.consume(TK_LEFT_PAREN, "expected left parenthesis")
+	if errPL != nil {
+		return nil, errPL
+	}
+
+	var initStmt Stmt
+	var initErr error
+	if !p.match(TK_SEMICOLON) {
+		if p.match(TK_VAR) {
+			initStmt, initErr = p.varDecl()
+		} else {
+			initStmt, initErr = p.exprStmt()
+		}
+	}
+
+	if initErr != nil {
+		return nil, initErr
+	}
+
+	var condExpr Expr
+	var condErr error
+	if !p.check(TK_SEMICOLON) {
+		condExpr, condErr = p.expression()
+	}
+
+	if condErr != nil {
+		return nil, condErr
+	}
+	p.consume(TK_SEMICOLON, "semicolon expected after for-loop condition")
+
+	var incrExpr Expr
+	var incrErr error
+	if !p.check(TK_RIGHT_PAREN) {
+		incrExpr, incrErr = p.expression()
+	}
+
+	if incrErr != nil {
+		return nil, incrErr
+	}
+
+	p.consume(TK_RIGHT_PAREN, "right parenthesis expected to close for-loop")
+
+	stmt, err := p.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	if incrExpr != nil {
+		stmt = &BlockStmt{Statements: []Stmt{stmt, &ExprStmt{Expression: incrExpr}}}
+	}
+
+	if condExpr == nil {
+		condExpr = &Literal{Value: true}
+	}
+
+	stmt = &WhileStmt{Condition: condExpr, Body: stmt}
+
+	if initStmt != nil {
+		stmt = &BlockStmt{Statements: []Stmt{initStmt, stmt}}
+	}
+
+	return stmt, nil
 }
 
 func (p *Parser) exprStmt() (Stmt, error) {
@@ -143,7 +277,7 @@ func (p *Parser) assignment() (Expr, error) {
 }
 
 func (p *Parser) ternary() (Expr, error) {
-	expr, err := p.equality()
+	expr, err := p.logicalOr()
 	if err != nil {
 		return nil, err
 	}
@@ -162,6 +296,42 @@ func (p *Parser) ternary() (Expr, error) {
 		}
 
 		return &TernaryCondition{Condition: expr, TrueBranch: trueExpr, FalseBranch: falseExpr}, nil
+	}
+
+	return expr, nil
+}
+
+func (p *Parser) logicalOr() (Expr, error) {
+	expr, err := p.logicalAnd()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.match(TK_OR) {
+		op := p.previous()
+		right, err := p.logicalAnd()
+		if err != nil {
+			return nil, err
+		}
+		expr = &Logical{Left: expr, Operator: op, Right: right}
+	}
+
+	return expr, nil
+}
+
+func (p *Parser) logicalAnd() (Expr, error) {
+	expr, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.match(TK_AND) {
+		op := p.previous()
+		right, err := p.equality()
+		if err != nil {
+			return nil, err
+		}
+		expr = &Logical{Left: expr, Operator: op, Right: right}
 	}
 
 	return expr, nil
