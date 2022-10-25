@@ -136,6 +136,7 @@ func main() {
 				"TernaryCondition : Condition Expr, TrueBranch Expr, FalseBranch Expr",
 				"Assign: Name Token, Value Expr",
 				"Variable : Name Token",
+				"Call : Callee Expr, Paren Token, Arguments []Expr",
 			}},
 		{"stmt.go", "Stmt", []string{
 			"IfStmt : Condition Expr, ThenBranch Stmt, ElseBranch Stmt",

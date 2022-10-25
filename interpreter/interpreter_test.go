@@ -131,6 +131,13 @@ func TestPrograms(t *testing.T) {
 			`,
 			[]string{"3", "2", "1", "0"},
 		},
+		{
+			`
+			print clock();
+			print clock();
+			`,
+			[]string{"1", "2"},
+		},
 	}
 
 	for _, test := range tests {
@@ -140,7 +147,14 @@ func TestPrograms(t *testing.T) {
 
 func doProgramTest(t *testing.T, program string, expectedOutput []string) {
 	output := make([]string, 0)
+	clockIncr := 0
 	config := InterpreterConfig{
+		GlobalFuncOverrides: map[string]Callable{
+			"clock": NewNativeCallable(0, func(i *Interpreter, arguments []interface{}) interface{} {
+				clockIncr = clockIncr + 1
+				return clockIncr
+			}),
+		},
 		PrintFunc: func(value string) {
 			output = append(output, value)
 		},

@@ -3,18 +3,21 @@ package interpreter
 import "fmt"
 
 type InterpreterConfig struct {
-	PrintFunc func(string)
+	PrintFunc           func(string)
+	GlobalFuncOverrides map[string]Callable
 }
 
 var DefaultInterpreterConfig = InterpreterConfig{
 	PrintFunc: func(s string) {
 		fmt.Println(s)
 	},
+	GlobalFuncOverrides: nil,
 }
 
 type Interpreter struct {
-	config      InterpreterConfig
-	environment *Environment
+	config            InterpreterConfig
+	globalEnvironment *Environment
+	environment       *Environment
 }
 
 type result struct {
@@ -95,7 +98,16 @@ func (r *result) IsTruthy() bool {
 }
 
 func NewInterpreter(config InterpreterConfig) *Interpreter {
-	return &Interpreter{environment: NewEnvironment(), config: config}
+	globals := NewEnvironment()
+	globals.Define("clock", ClockFunc)
+
+	if config.GlobalFuncOverrides != nil {
+		for key, value := range config.GlobalFuncOverrides {
+			globals.Define(key, value)
+		}
+	}
+
+	return &Interpreter{environment: globals, config: config, globalEnvironment: globals}
 }
 
 func (i *Interpreter) Interpret(stmt []Stmt) (interface{}, error) {
@@ -346,6 +358,39 @@ func (i *Interpreter) VisitWhileStmt(expr *WhileStmt) interface{} {
 	return Void
 }
 
+func (i *Interpreter) VisitCall(expr *Call) interface{} {
+	rCallee := expr.Callee.Accept(i).(*result)
+	if rCallee.IsError() {
+		return rCallee
+	}
+
+	callable, ok := rCallee.Value.(Callable)
+	if !ok {
+		return i.error(E_CANNOT_CALL, expr.Paren, "Can only call functions or classes")
+	}
+
+	if callable.Arity() != len(expr.Arguments) {
+		return i.error(E_INVALID_ARGUMENTS, expr.Paren, "Provided arguments do not match function definition")
+	}
+
+	argValues := make([]interface{}, 0)
+
+	for _, value := range expr.Arguments {
+		argValue := value.Accept(i).(*result)
+		if argValue.IsError() {
+			return argValue
+		}
+
+		argValues = append(argValues, argValue.Value)
+	}
+
+	callResult := callable.Call(i, argValues)
+	if err, ok := callResult.(error); ok {
+		return Error(err)
+	}
+	return Result(callResult)
+}
+
 func (i *Interpreter) VisitExprStmt(stmt *ExprStmt) interface{} {
 	r := stmt.Expression.Accept(i)
 	if r.(*result).IsError() {
@@ -378,7 +423,7 @@ func (i *Interpreter) VisitVarStmt(stmt *VarStmt) interface{} {
 		return value
 	}
 
-	i.environment.Define(stmt.Name, value.Value)
+	i.environment.Define(stmt.Name.Lexeme, value.Value)
 	return Void
 }
 

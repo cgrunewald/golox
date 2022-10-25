@@ -90,6 +90,9 @@ func TestParseExpressions(t *testing.T) {
 		{"false or true", "(or false true)"},
 		{"false and true", "(and false true)"},
 		{"false or false or false and true", "(or (or false false) (and false true))"},
+		{"foo()", "(call (var foo) (arg))"},
+		{"foo()()", "(call (call (var foo) (arg)) (arg))"},
+		{"foo(1+2, a)", "(call (var foo) (arg (+ 1 2) (var a)))"},
 	}
 
 	for _, test := range tests {
@@ -143,6 +146,9 @@ func TestParseErrors(t *testing.T) {
 		{"1;1 != 2;", 0, 2},
 		{"=;1 != 2;", 1, 1},
 		{"a=b; < != 2;print 3;", 1, 2},
+		{"for () print 1;", 1, 0},
+		{"for (;) print 1;", 1, 0},
+		{"for (;;) print 1;", 0, 1},
 	}
 
 	for _, test := range tests {

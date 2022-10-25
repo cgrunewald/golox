@@ -7,6 +7,8 @@ type Parser struct {
 	current int
 }
 
+const MaxArguments = 255
+
 /*
 
 Grammar:
@@ -33,8 +35,11 @@ equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term 					 → factor ( ( "-" | "+" ) factor )* ;
 factor  			 → unary ( ( "/" | "*" ) unary )* ;
-unary          → ( "!" | "-" ) unary | primary ;
+unary          → ( "!" | "-" ) unary | call ;
+call           → primary ( "(" arguments? ")" )* ;
 primary        → IDENTIFIER | NUMBER | STRING | "true" | "false" | "nil" | ( "(" expression ")" ) ;
+
+arguments      → expression ( "," expression )* ;
 
 */
 
@@ -424,7 +429,52 @@ func (p *Parser) unary() (Expr, error) {
 		return &Unary{Operator: operator, Right: right}, nil
 	}
 
-	return p.primary()
+	return p.call()
+}
+
+func (p *Parser) call() (Expr, error) {
+	primary, err := p.primary()
+	if err != nil {
+		return nil, err
+	}
+
+	for p.match(TK_LEFT_PAREN) {
+		primary, err = p.finishCall(primary)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return primary, nil
+}
+
+func (p *Parser) finishCall(expr Expr) (Expr, error) {
+	exprList := make([]Expr, 0)
+
+	if p.check(TK_RIGHT_PAREN) {
+		goto finish
+	}
+
+	for {
+		argExpr, argErr := p.expression()
+		if argErr != nil {
+			return nil, argErr
+		}
+
+		exprList = append(exprList, argExpr)
+
+		if !p.match(TK_COMMA) {
+			break
+		}
+	}
+
+finish:
+	p.consume(TK_RIGHT_PAREN, "expected ')' after arguments")
+	if len(exprList) > MaxArguments {
+		// Note that we continue parsing
+		p.error(p.previous(), "Argument list exceeded maximum length")
+	}
+	return &Call{Callee: expr, Arguments: exprList, Paren: p.previous()}, nil
 }
 
 func (p *Parser) primary() (Expr, error) {

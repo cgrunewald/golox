@@ -86,6 +86,16 @@ func (p *ASTPrinter) VisitWhileStmt(stmt *WhileStmt) interface{} {
 	return fmt.Sprintf("(while %s %s)", expression, statement)
 }
 
+func (p *ASTPrinter) VisitCall(expr *Call) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("(call ")
+	builder.WriteString(expr.Callee.Accept(p).(string))
+	builder.WriteString(" ")
+	builder.WriteString(p.parenthesized("arg", expr.Arguments...))
+	builder.WriteString(")")
+	return builder.String()
+}
+
 func (p *ASTPrinter) printStatements(stmts []Stmt) string {
 	builder := strings.Builder{}
 	builder.WriteString("(scope")

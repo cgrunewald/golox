@@ -13,6 +13,7 @@ type ExprVisitor interface {
   VisitTernaryCondition(expr *TernaryCondition) interface{}
   VisitAssign(expr *Assign) interface{}
   VisitVariable(expr *Variable) interface{}
+  VisitCall(expr *Call) interface{}
 }
 
 type Binary struct {
@@ -93,6 +94,17 @@ type Variable struct {
 
 func (e *Variable) Accept(visitor ExprVisitor) interface{} {
   return visitor.VisitVariable(e)
+}
+
+type Call struct {
+  Expr
+  Callee Expr
+  Paren Token
+  Arguments []Expr
+}
+
+func (e *Call) Accept(visitor ExprVisitor) interface{} {
+  return visitor.VisitCall(e)
 }
 
 

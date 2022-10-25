@@ -13,8 +13,8 @@ func NewEnclosedEnvironment(enclosing *Environment) *Environment {
 	return &Environment{enclosing, make(map[string]interface{})}
 }
 
-func (e *Environment) Define(name Token, value interface{}) {
-	e.Values[name.Lexeme] = value
+func (e *Environment) Define(name string, value interface{}) {
+	e.Values[name] = value
 }
 
 func (e *Environment) Get(name Token) (interface{}, error) {
