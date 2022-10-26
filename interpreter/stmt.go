@@ -10,7 +10,9 @@ type StmtVisitor interface {
   VisitExprStmt(expr *ExprStmt) interface{}
   VisitPrintStmt(expr *PrintStmt) interface{}
   VisitVarStmt(expr *VarStmt) interface{}
+  VisitFunctionStmt(expr *FunctionStmt) interface{}
   VisitBlockStmt(expr *BlockStmt) interface{}
+  VisitReturnStmt(expr *ReturnStmt) interface{}
 }
 
 type IfStmt struct {
@@ -62,6 +64,17 @@ func (e *VarStmt) Accept(visitor StmtVisitor) interface{} {
   return visitor.VisitVarStmt(e)
 }
 
+type FunctionStmt struct {
+  Expr
+  Name Token
+  Params []Token
+  Body []Stmt
+}
+
+func (e *FunctionStmt) Accept(visitor StmtVisitor) interface{} {
+  return visitor.VisitFunctionStmt(e)
+}
+
 type BlockStmt struct {
   Expr
   Statements []Stmt
@@ -69,6 +82,16 @@ type BlockStmt struct {
 
 func (e *BlockStmt) Accept(visitor StmtVisitor) interface{} {
   return visitor.VisitBlockStmt(e)
+}
+
+type ReturnStmt struct {
+  Expr
+  Keyword Token
+  Expression Expr
+}
+
+func (e *ReturnStmt) Accept(visitor StmtVisitor) interface{} {
+  return visitor.VisitReturnStmt(e)
 }
 
 

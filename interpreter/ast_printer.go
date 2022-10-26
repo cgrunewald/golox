@@ -51,6 +51,25 @@ func (p *ASTPrinter) VisitVarStmt(stmt *VarStmt) interface{} {
 	return p.parenthesized("def "+stmt.Name.Lexeme, stmt.Initializer)
 }
 
+func (p *ASTPrinter) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
+	builder := strings.Builder{}
+	builder.WriteString("(def " + stmt.Name.Lexeme)
+	builder.WriteString("(")
+
+	for i, param := range stmt.Params {
+		if i > 0 {
+			builder.WriteString(" ")
+		}
+		builder.WriteString(param.Lexeme)
+	}
+
+	builder.WriteString(") ")
+	builder.WriteString(p.printStatements(stmt.Body))
+	builder.WriteString(")")
+
+	return builder.String()
+}
+
 func (p *ASTPrinter) VisitExprStmt(stmt *ExprStmt) interface{} {
 	return stmt.Expression.Accept(p)
 }
@@ -94,6 +113,10 @@ func (p *ASTPrinter) VisitCall(expr *Call) interface{} {
 	builder.WriteString(p.parenthesized("arg", expr.Arguments...))
 	builder.WriteString(")")
 	return builder.String()
+}
+
+func (p *ASTPrinter) VisitReturnStmt(stmt *ReturnStmt) interface{} {
+	return p.parenthesized("return", stmt.Expression)
 }
 
 func (p *ASTPrinter) printStatements(stmts []Stmt) string {

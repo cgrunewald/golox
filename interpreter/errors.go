@@ -13,6 +13,7 @@ const (
 	E_CANNOT_CALL
 	E_INVALID_ARGUMENTS
 	E_DIVIDE_BY_ZERO
+	E_UNEXPECTED_RETURN
 )
 
 type LoxError struct {

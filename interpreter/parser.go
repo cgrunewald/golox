@@ -15,16 +15,18 @@ Grammar:
 
 program        → declaration* EOF ;
 
-declaration    → varDecl | statement ;
+declaration    → funDecl | varDecl | statement ;
 
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
+funDecl        → "fun" IDENTIFIER "(" parameters? ")" blockStmt ;
 
-statement			 → exprStmt | printStmt | blockStmt | ifStmt | forStmt | whileStmt ;
+statement			 → exprStmt | printStmt | blockStmt | ifStmt | forStmt | whileStmt | returnStmt;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 ifStmt				 → "if" "(" expression ")" statement ( "else" statement )? ;
 whileStmt			 → "while" "(" expression ")" statement ;
 forStmt				 → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
+returnStmt     → "return" ( expression? ) ";" ;
 
 expression     → ternary ;
 assignment 	   → IDENTIFIER "=" assignment | ternary;
@@ -40,6 +42,7 @@ call           → primary ( "(" arguments? ")" )* ;
 primary        → IDENTIFIER | NUMBER | STRING | "true" | "false" | "nil" | ( "(" expression ")" ) ;
 
 arguments      → expression ( "," expression )* ;
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 
 */
 
@@ -68,7 +71,31 @@ func (p *Parser) statement() (Stmt, error) {
 		return p.ifStmt()
 	}
 
+	if p.match(TK_RETURN) {
+		return p.returnStmt()
+	}
+
 	return p.exprStmt()
+}
+
+func (p *Parser) returnStmt() (Stmt, error) {
+	retToken := p.previous()
+
+	var expression Expr
+	var err error
+	if !p.check(TK_SEMICOLON) {
+		expression, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = p.consume(TK_SEMICOLON, "expected semicolon after return")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReturnStmt{Keyword: retToken, Expression: expression}, nil
 }
 
 func (p *Parser) ifStmt() (Stmt, error) {
@@ -233,7 +260,58 @@ func (p *Parser) declaration() (Stmt, error) {
 		return p.varDecl()
 	}
 
+	if p.match(TK_FUN) {
+		return p.functionDecl()
+	}
+
 	return p.statement()
+}
+
+func (p *Parser) functionDecl() (Stmt, error) {
+	idToken, err := p.consume(TK_IDENTIFIER, "Expected function name")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = p.consume(TK_LEFT_PAREN, "Expected '(' for parameter list")
+	if err != nil {
+		return nil, err
+	}
+
+	tokList := make([]Token, 0)
+	if p.check(TK_RIGHT_PAREN) {
+		goto final
+	}
+
+	for {
+		paramTok, paramErr := p.consume(TK_IDENTIFIER, "Expected identifier for parameter")
+		if paramErr != nil {
+			return nil, paramErr
+		}
+
+		tokList = append(tokList, paramTok)
+		if !p.match(TK_COMMA) {
+			break
+		}
+	}
+
+final:
+	_, err = p.consume(TK_RIGHT_PAREN, "Expected ')' to end parameter list")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = p.consume(TK_LEFT_BRACE, "Expected '{' to begin function body")
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := p.blockStmt()
+	if err != nil {
+		return nil, err
+	}
+
+	return &FunctionStmt{Name: idToken, Params: tokList, Body: block.(*BlockStmt).Statements}, nil
 }
 
 func (p *Parser) varDecl() (Stmt, error) {

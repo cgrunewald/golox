@@ -138,6 +138,120 @@ func TestPrograms(t *testing.T) {
 			`,
 			[]string{"1", "2"},
 		},
+		{
+			`
+			fun foo() {
+				print "bar";
+			}
+			foo();
+			foo();
+
+			fun bar(a, b) {
+				print a + b;
+			}
+			bar("fizz", "buzz");
+			`,
+			[]string{"bar", "bar", "fizzbuzz"},
+		},
+		{
+			`
+			fun count(n) {
+				if (n > 1) count(n - 1);
+				print n;
+			}
+			count(4);
+			`,
+			[]string{"1", "2", "3", "4"},
+		},
+		{
+			`
+			fun mult2(n) {
+				return 2 * n;
+			}
+			print mult2(2);
+
+			fun nested() {
+				var a = 1; 
+				{
+					var a = 2;
+					{
+						var a = 3;
+						return a;
+					}
+				}
+			}
+			print nested();
+
+			fun ifThen(b) {
+				if (b) return 1; else return 2;
+			}
+			print ifThen(true);
+
+			fun whileLoop(b) {
+				while (b) {
+					return 5;
+				}
+				return 6;
+			}
+
+			print whileLoop(true);
+			print whileLoop(false);
+			`,
+			[]string{"4", "3", "1", "5", "6"},
+		},
+		{`
+			fun createIncrementer() {
+				var i = 0;
+				fun incr() {
+					i = i + 1;
+					return i;
+				}
+				return incr;
+			}
+
+			var i1 = createIncrementer();
+			var i2 = createIncrementer();
+
+			print i1();
+			print i1();
+			print i2();
+			print i2();
+			`,
+			[]string{"1", "2", "1", "2"},
+		},
+		{`
+			fun testFor() {
+				var first = nil;
+				for (var i = 0; i < 2; i = i + 1) {
+					fun ret() {
+						return i;
+					}
+					if (first == nil) {
+						first = ret;
+					}
+				}
+				return first;
+			}
+
+			print testFor()();
+
+			fun testFor2() {
+				var first = nil;
+				for (var i = 0; i < 2; i = i + 1) {
+					var j = i;
+					fun ret() {
+						return j;
+					}
+					if (first == nil) {
+						first = ret;
+					}
+				}
+				return first;
+			}
+			print testFor2()();
+			`,
+			[]string{"2", "0"},
+		},
 	}
 
 	for _, test := range tests {

@@ -137,6 +137,24 @@ func TestParseControlFlowStatements(t *testing.T) {
 	}
 }
 
+func TestParseFunctionStatements(t *testing.T) {
+	tests := []struct {
+		expression string
+		expected   string
+	}{
+		{"fun a() {}", "(scope (def a() (scope)))"},
+		{"fun a(b, c) {}", "(scope (def a(b c) (scope)))"},
+		{"fun a(b, c) {}", "(scope (def a(b c) (scope)))"},
+		{"fun a(b, c) {print b + c;}", "(scope (def a(b c) (scope (print (+ (var b) (var c))))))"},
+		{"return;", "(scope (return))"},
+		{"return 2 + 2;", "(scope (return (+ 2 2)))"},
+	}
+
+	for _, test := range tests {
+		runParseStmt(t, test.expression, test.expected)
+	}
+}
+
 func TestParseErrors(t *testing.T) {
 	tests := []struct {
 		expression     string

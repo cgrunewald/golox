@@ -18,19 +18,29 @@ type Interpreter struct {
 	config            InterpreterConfig
 	globalEnvironment *Environment
 	environment       *Environment
+	callstack         []string
 }
 
 type result struct {
-	Value interface{}
-	Err   error
+	Value        interface{}
+	IsStmtReturn bool
+	Err          error
 }
 
 func Result(value interface{}) *result {
-	return &result{value, nil}
+	return &result{value, false, nil}
 }
 
 func Error(err error) *result {
-	return &result{nil, err}
+	return &result{nil, false, err}
+}
+
+func Return(value interface{}) *result {
+	return &result{value, true, nil}
+}
+
+func (r *result) IsBlockBreaking() bool {
+	return r.IsError() || r.IsStmtReturn
 }
 
 var Void = Result(nil)
@@ -107,7 +117,15 @@ func NewInterpreter(config InterpreterConfig) *Interpreter {
 		}
 	}
 
-	return &Interpreter{environment: globals, config: config, globalEnvironment: globals}
+	return &Interpreter{environment: globals, config: config, globalEnvironment: globals, callstack: make([]string, 0)}
+}
+
+func (i *Interpreter) PushCallstack(functionName string) {
+	i.callstack = append(i.callstack, functionName)
+}
+
+func (i *Interpreter) PopCallstack() {
+	i.callstack = i.callstack[:len(i.callstack)-1]
 }
 
 func (i *Interpreter) Interpret(stmt []Stmt) (interface{}, error) {
@@ -350,7 +368,7 @@ func (i *Interpreter) VisitWhileStmt(expr *WhileStmt) interface{} {
 		}
 
 		rBody := expr.Body.Accept(i).(*result)
-		if rBody.IsError() {
+		if rBody.IsBlockBreaking() {
 			return rBody
 		}
 	}
@@ -427,9 +445,15 @@ func (i *Interpreter) VisitVarStmt(stmt *VarStmt) interface{} {
 	return Void
 }
 
+func (i *Interpreter) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
+	callable := NewFunctionCallable(stmt, i.environment)
+	i.environment.Define(stmt.Name.Lexeme, callable)
+	return Void
+}
+
 func (i *Interpreter) VisitBlockStmt(stmt *BlockStmt) interface{} {
 	r := i.executeBlock(stmt.Statements, NewEnclosedEnvironment(i.environment))
-	if r.(*result).IsError() {
+	if r.(*result).IsBlockBreaking() {
 		return r
 	}
 	return Void
@@ -449,12 +473,29 @@ func (i *Interpreter) executeBlock(statements []Stmt, env *Environment) interfac
 
 	for _, stmt := range statements {
 		r := stmt.Accept(i)
-		if r.(*result).IsError() {
+		if r.(*result).IsBlockBreaking() {
 			return r
 		}
 	}
 
 	return Void
+}
+
+func (i *Interpreter) VisitReturnStmt(stmt *ReturnStmt) interface{} {
+	if len(i.callstack) == 0 {
+		return i.error(E_UNEXPECTED_RETURN, stmt.Keyword, "unexpected return in current scope")
+	}
+
+	var returnValue interface{}
+	if stmt.Expression != nil {
+		stmtResult := stmt.Expression.Accept(i).(*result)
+		if stmtResult.IsError() {
+			return stmtResult
+		}
+
+		returnValue = stmtResult.Value
+	}
+	return Return(returnValue)
 }
 
 func (i *Interpreter) error(errType int32, token Token, message string) *result {
