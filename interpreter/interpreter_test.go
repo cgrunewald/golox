@@ -1,6 +1,9 @@
 package interpreter
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func doTest(t *testing.T, expression string, expected interface{}, expectedErr int32) {
 	scanner := NewScanner(expression)
@@ -90,7 +93,8 @@ func TestPrograms(t *testing.T) {
 			`
 			var a = 1;
 			{
-				var a = a * 3;
+				var b = a;
+				var a = b * 3;
 				print a;
 			}
 			print a;
@@ -252,14 +256,72 @@ func TestPrograms(t *testing.T) {
 			`,
 			[]string{"2", "0"},
 		},
+		{
+			`
+				fun compose(f, g) {
+					return fun (a) {
+						return f(g(a));
+					};
+				}
+
+				var f = compose(fun (a) { return a * 2; }, fun (b) { return b * 2; });
+				print f(2);
+			`,
+			[]string{"8"},
+		},
+		{
+			`
+				var a = "global";
+				{
+					fun printA() {
+						print a;
+					}
+
+					printA();
+					var a = "local";
+
+					printA();
+				}
+			`,
+			[]string{"global", "global"},
+		},
 	}
 
 	for _, test := range tests {
-		doProgramTest(t, test.program, test.expectedOutput)
+		doProgramTest(t, test.program, test.expectedOutput, []int32{})
 	}
 }
 
-func doProgramTest(t *testing.T, program string, expectedOutput []string) {
+func TestBadPrograms(t *testing.T) {
+	tests := []struct {
+		program        string
+		expectedOutput []string
+		expectedErrors []int32
+	}{
+		{
+			`
+			fun bad() {
+				var a = "a";
+				var a = "b";
+			}
+			`,
+			[]string{},
+			[]int32{E_VAR_ALREADY_DEFINED},
+		},
+		{
+			`
+			return "invalid";
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_RETURN},
+		},
+	}
+	for _, test := range tests {
+		doProgramTest(t, test.program, test.expectedOutput, test.expectedErrors)
+	}
+}
+
+func doProgramTest(t *testing.T, program string, expectedOutput []string, errorCount []int32) {
 	output := make([]string, 0)
 	clockIncr := 0
 	config := InterpreterConfig{
@@ -275,9 +337,27 @@ func doProgramTest(t *testing.T, program string, expectedOutput []string) {
 	}
 
 	errs := RunProgram(config, program)
-	if len(errs) > 0 {
-		t.Errorf("unexpected error: %v", errs)
+	if len(errs) > 0 && len(errorCount) == 0 {
+		t.Errorf("in program '%v':\nunexpected error(s):\n%v", program, errs)
 		return
+	}
+
+	if len(errs) >= 0 && len(errorCount) > 0 {
+		if len(errs) != len(errorCount) {
+			t.Errorf("expected %d errors; got %d errors", len(errorCount), len(errs))
+		} else {
+			for i, err := range errorCount {
+				var loxError *LoxError
+				ok := errors.As(errs[i], &loxError)
+				if ok {
+					if loxError.runtimeErrorType != err {
+						t.Errorf("Error[%d] expected type %d, got type %d", i, err, loxError.runtimeErrorType)
+					}
+				} else {
+					t.Errorf("Expected a lox error, got %v", errs[i])
+				}
+			}
+		}
 	}
 
 	if len(output) != len(expectedOutput) {
@@ -287,7 +367,7 @@ func doProgramTest(t *testing.T, program string, expectedOutput []string) {
 
 	for i, line := range output {
 		if line != expectedOutput[i] {
-			t.Errorf("expected output line '%d' to be '%q', got '%q'", i, expectedOutput[i], line)
+			t.Errorf("expected output idx %d to be %q, got %q", i, expectedOutput[i], line)
 		}
 	}
 }

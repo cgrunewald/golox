@@ -52,11 +52,19 @@ func (p *ASTPrinter) VisitVarStmt(stmt *VarStmt) interface{} {
 }
 
 func (p *ASTPrinter) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
+	return p.printFunction(stmt.Name.Lexeme, stmt.Params, stmt.Body)
+}
+
+func (p *ASTPrinter) VisitLambda(expr *Lambda) interface{} {
+	return p.printFunction("", expr.Params, expr.Body)
+}
+
+func (p *ASTPrinter) printFunction(name string, params []Token, body []Stmt) interface{} {
 	builder := strings.Builder{}
-	builder.WriteString("(def " + stmt.Name.Lexeme)
+	builder.WriteString("(def " + name)
 	builder.WriteString("(")
 
-	for i, param := range stmt.Params {
+	for i, param := range params {
 		if i > 0 {
 			builder.WriteString(" ")
 		}
@@ -64,7 +72,7 @@ func (p *ASTPrinter) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
 	}
 
 	builder.WriteString(") ")
-	builder.WriteString(p.printStatements(stmt.Body))
+	builder.WriteString(p.printStatements(body))
 	builder.WriteString(")")
 
 	return builder.String()

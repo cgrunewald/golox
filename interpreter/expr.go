@@ -14,6 +14,7 @@ type ExprVisitor interface {
   VisitAssign(expr *Assign) interface{}
   VisitVariable(expr *Variable) interface{}
   VisitCall(expr *Call) interface{}
+  VisitLambda(expr *Lambda) interface{}
 }
 
 type Binary struct {
@@ -105,6 +106,17 @@ type Call struct {
 
 func (e *Call) Accept(visitor ExprVisitor) interface{} {
   return visitor.VisitCall(e)
+}
+
+type Lambda struct {
+  Expr
+  Name Token
+  Params []Token
+  Body []Stmt
+}
+
+func (e *Lambda) Accept(visitor ExprVisitor) interface{} {
+  return visitor.VisitLambda(e)
 }
 
 

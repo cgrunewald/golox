@@ -15,6 +15,8 @@ var interpreter = i.NewInterpreter(i.InterpreterConfig{
 	},
 })
 
+var resolver = i.NewResolver(interpreter)
+
 func main() {
 	args := os.Args[1:]
 	if len(args) > 1 {
@@ -87,6 +89,11 @@ func run(source string, interactive bool) error {
 			return parser.Errors()[0]
 		}
 
+		resolver.ResolveExpr(expr)
+		if resolver.HasError() {
+			return resolver.Errors()[0]
+		}
+
 		result, err := interpreter.InterpretExpr(expr)
 		if err != nil {
 			return err
@@ -99,6 +106,11 @@ func run(source string, interactive bool) error {
 	program := parser.Parse()
 	if parser.HasError() {
 		return parser.Errors()[0]
+	}
+
+	resolver.ResolveStmts(program)
+	if resolver.HasError() {
+		return resolver.Errors()[0]
 	}
 
 	_, err := interpreter.Interpret(program)

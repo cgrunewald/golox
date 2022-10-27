@@ -29,6 +29,18 @@ func (e *Environment) Get(name Token) (interface{}, error) {
 	return nil, NewRuntimeError(E_UNDEFINED_VARIABLE, name.Line, name.Lexeme, "Undefined variable")
 }
 
+func (e *Environment) GetAt(name Token, distance int) (interface{}, error) {
+	return e.ancestor(distance).Get(name)
+}
+
+func (e *Environment) ancestor(distance int) *Environment {
+	env := e
+	for i := 0; i < distance; i = i + 1 {
+		env = e.Enclosing
+	}
+	return env
+}
+
 func (e *Environment) Set(name Token, value interface{}) error {
 	if _, ok := e.Values[name.Lexeme]; ok {
 		e.Values[name.Lexeme] = value
@@ -40,4 +52,8 @@ func (e *Environment) Set(name Token, value interface{}) error {
 	}
 
 	return NewRuntimeError(E_UNDEFINED_VARIABLE, name.Line, name.Lexeme, "Undefined variable")
+}
+
+func (e *Environment) SetAt(name Token, value interface{}, distance int) error {
+	return e.ancestor(distance).Set(name, value)
 }

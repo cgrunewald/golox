@@ -19,6 +19,7 @@ declaration    → funDecl | varDecl | statement ;
 
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 funDecl        → "fun" IDENTIFIER "(" parameters? ")" blockStmt ;
+classDecl      → "class" IDENTIFIER "{" ( varDecl | funDecl )* "}";
 
 statement			 → exprStmt | printStmt | blockStmt | ifStmt | forStmt | whileStmt | returnStmt;
 exprStmt       → expression ";" ;
@@ -39,8 +40,9 @@ term 					 → factor ( ( "-" | "+" ) factor )* ;
 factor  			 → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary | call ;
 call           → primary ( "(" arguments? ")" )* ;
-primary        → IDENTIFIER | NUMBER | STRING | "true" | "false" | "nil" | ( "(" expression ")" ) ;
+primary        → IDENTIFIER | NUMBER | STRING | "true" | "false" | "nil" | lambda | ( "(" expression ")" ) ;
 
+lambda         → "fun" "(" parameters? ")" blockStmt ;
 arguments      → expression ( "," expression )* ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 
@@ -260,19 +262,28 @@ func (p *Parser) declaration() (Stmt, error) {
 		return p.varDecl()
 	}
 
-	if p.match(TK_FUN) {
+	if p.check(TK_FUN) && p.checkNext(TK_IDENTIFIER) {
+		p.consume(TK_FUN, "")
 		return p.functionDecl()
 	}
 
 	return p.statement()
 }
 
-func (p *Parser) functionDecl() (Stmt, error) {
-	idToken, err := p.consume(TK_IDENTIFIER, "Expected function name")
+func (p *Parser) lambda() (Expr, error) {
+	token := p.previous()
+
+	stmt, err := p.finishFunction(token)
 	if err != nil {
 		return nil, err
 	}
 
+	fStmt := stmt.(*FunctionStmt)
+	return &Lambda{Name: fStmt.Name, Params: fStmt.Params, Body: fStmt.Body}, nil
+}
+
+func (p *Parser) finishFunction(token Token) (Stmt, error) {
+	var err error
 	_, err = p.consume(TK_LEFT_PAREN, "Expected '(' for parameter list")
 	if err != nil {
 		return nil, err
@@ -311,7 +322,16 @@ final:
 		return nil, err
 	}
 
-	return &FunctionStmt{Name: idToken, Params: tokList, Body: block.(*BlockStmt).Statements}, nil
+	return &FunctionStmt{Name: token, Params: tokList, Body: block.(*BlockStmt).Statements}, nil
+}
+
+func (p *Parser) functionDecl() (Stmt, error) {
+	idToken, err := p.consume(TK_IDENTIFIER, "Expected function name")
+	if err != nil {
+		return nil, err
+	}
+
+	return p.finishFunction(idToken)
 }
 
 func (p *Parser) varDecl() (Stmt, error) {
@@ -566,6 +586,8 @@ func (p *Parser) primary() (Expr, error) {
 		return &Literal{Value: p.previous().Literal}, nil
 	} else if p.match(TK_IDENTIFIER) {
 		return &Variable{Name: p.previous()}, nil
+	} else if p.match(TK_FUN) {
+		return p.lambda()
 	} else if p.match(TK_LEFT_PAREN) {
 		expr, err := p.expression()
 		if err != nil {
@@ -608,6 +630,14 @@ func (p *Parser) check(t TokenType) bool {
 	}
 
 	return p.peek().TokenType == t
+}
+
+func (p *Parser) checkNext(t TokenType) bool {
+	if p.isAtEnd() {
+		return false
+	}
+
+	return p.tokens[p.current+1].TokenType == t
 }
 
 func (p *Parser) consume(t TokenType, msg string) (Token, error) {

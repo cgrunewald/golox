@@ -19,6 +19,7 @@ type Interpreter struct {
 	globalEnvironment *Environment
 	environment       *Environment
 	callstack         []string
+	locals            map[Expr]int
 }
 
 type result struct {
@@ -117,7 +118,11 @@ func NewInterpreter(config InterpreterConfig) *Interpreter {
 		}
 	}
 
-	return &Interpreter{environment: globals, config: config, globalEnvironment: globals, callstack: make([]string, 0)}
+	return &Interpreter{environment: globals, config: config, globalEnvironment: globals, callstack: make([]string, 0), locals: make(map[Expr]int)}
+}
+
+func (i *Interpreter) resolve(expr Expr, hops int) {
+	i.locals[expr] = hops
 }
 
 func (i *Interpreter) PushCallstack(functionName string) {
@@ -294,20 +299,41 @@ func (i *Interpreter) VisitAssign(expr *Assign) interface{} {
 		return value
 	}
 
-	err := i.environment.Set(expr.Name, value.Value)
-	if err != nil {
-		return Error(err)
+	distance, ok := i.locals[expr]
+	if ok {
+		err := i.environment.SetAt(expr.Name, value.Value, distance)
+		if err != nil {
+			return Error(err)
+		}
+	} else {
+		err := i.globalEnvironment.Set(expr.Name, value.Value)
+		if err != nil {
+			return Error(err)
+		}
 	}
 
 	return value
 }
 
-func (i *Interpreter) VisitVariable(expr *Variable) interface{} {
-	value, err := i.environment.Get(expr.Name)
-	if err != nil {
-		return Error(err)
+func (i *Interpreter) lookupVariable(name Token, expr Expr) interface{} {
+	distance, ok := i.locals[expr]
+	if ok {
+		value, err := i.environment.GetAt(name, distance)
+		if err != nil {
+			return Error(err)
+		}
+		return Result(value)
+	} else {
+		value, err := i.globalEnvironment.Get(name)
+		if err != nil {
+			return Error(err)
+		}
+		return Result(value)
 	}
-	return Result(value)
+}
+
+func (i *Interpreter) VisitVariable(expr *Variable) interface{} {
+	return i.lookupVariable(expr.Name, expr)
 }
 
 func (i *Interpreter) VisitLogical(expr *Logical) interface{} {
@@ -449,6 +475,10 @@ func (i *Interpreter) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
 	callable := NewFunctionCallable(stmt, i.environment)
 	i.environment.Define(stmt.Name.Lexeme, callable)
 	return Void
+}
+
+func (i *Interpreter) VisitLambda(expr *Lambda) interface{} {
+	return Result(NewLambdaCallable(expr, i.environment))
 }
 
 func (i *Interpreter) VisitBlockStmt(stmt *BlockStmt) interface{} {

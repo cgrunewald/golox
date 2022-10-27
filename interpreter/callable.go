@@ -34,33 +34,39 @@ var ClockFunc = NewNativeCallable(0, func(i *Interpreter, arguments []interface{
 })
 
 type FunctionCallable struct {
-	stmt               *FunctionStmt
+	name               Token
+	params             []Token
+	body               []Stmt
 	lexicalEnvironment *Environment
 }
 
 func NewFunctionCallable(stmt *FunctionStmt, lexicalEnvironment *Environment) Callable {
-	return &FunctionCallable{stmt, lexicalEnvironment}
+	return &FunctionCallable{name: stmt.Name, params: stmt.Params, body: stmt.Body, lexicalEnvironment: lexicalEnvironment}
+}
+
+func NewLambdaCallable(expr *Lambda, lexicalEnvironment *Environment) Callable {
+	return &FunctionCallable{name: expr.Name, params: expr.Params, body: expr.Body, lexicalEnvironment: lexicalEnvironment}
 }
 
 func (n *FunctionCallable) Arity() int {
-	return len(n.stmt.Params)
+	return len(n.params)
 }
 
 func (n *FunctionCallable) Call(i *Interpreter, arguments []interface{}) interface{} {
 	environment := NewEnclosedEnvironment(n.lexicalEnvironment)
 
-	if len(arguments) != len(n.stmt.Params) {
-		return i.error(E_INVALID_ARGUMENTS, n.stmt.Name, "Invalid arguments to function")
+	if len(arguments) != len(n.params) {
+		return i.error(E_INVALID_ARGUMENTS, n.name, "Invalid arguments to function")
 	}
 
-	for idx, tok := range n.stmt.Params {
+	for idx, tok := range n.params {
 		environment.Define(tok.Lexeme, arguments[idx])
 	}
 
 	i.PushCallstack(n.String())
 	defer i.PopCallstack()
 
-	r := i.executeBlock(n.stmt.Body, environment).(*result)
+	r := i.executeBlock(n.body, environment).(*result)
 	if r.IsError() {
 		return r.Err
 	}
@@ -73,5 +79,5 @@ func (n *FunctionCallable) Call(i *Interpreter, arguments []interface{}) interfa
 }
 
 func (n *FunctionCallable) String() string {
-	return n.stmt.Name.Lexeme
+	return n.name.Lexeme
 }

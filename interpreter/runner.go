@@ -14,6 +14,13 @@ func RunProgram(config InterpreterConfig, program string) []error {
 	}
 
 	i := NewInterpreter(config)
+
+	resolver := NewResolver(i)
+	resolver.ResolveStmts(stmts)
+	if resolver.HasError() {
+		return resolver.Errors()
+	}
+
 	_, err := i.Interpret(stmts)
 	if err != nil {
 		return []error{err}

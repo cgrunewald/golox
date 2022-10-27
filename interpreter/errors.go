@@ -14,6 +14,7 @@ const (
 	E_INVALID_ARGUMENTS
 	E_DIVIDE_BY_ZERO
 	E_UNEXPECTED_RETURN
+	E_VAR_ALREADY_DEFINED
 )
 
 type LoxError struct {
@@ -59,4 +60,12 @@ func IsLoxError(err error) bool {
 
 	var loxError *LoxError
 	return errors.As(err, &loxError)
+}
+
+func (t Token) ToError(msg string) error {
+	return NewTokenError(t.Line, t.Lexeme, msg)
+}
+
+func (t Token) ToRuntimeError(errorType int32, msg string) error {
+	return NewRuntimeError(errorType, t.Line, t.Lexeme, msg)
 }

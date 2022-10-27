@@ -43,7 +43,7 @@ func runParseStmt(t *testing.T, expression string, expected string) {
 	str := NewASTPrinter().PrintProgram(stmt)
 
 	if str != expected {
-		t.Errorf("expected %s, got %s", expected, str)
+		t.Errorf("%s: expected %s, got %s", expression, expected, str)
 		return
 	}
 }
@@ -148,6 +148,8 @@ func TestParseFunctionStatements(t *testing.T) {
 		{"fun a(b, c) {print b + c;}", "(scope (def a(b c) (scope (print (+ (var b) (var c))))))"},
 		{"return;", "(scope (return))"},
 		{"return 2 + 2;", "(scope (return (+ 2 2)))"},
+		{"var a = fun () {};", "(scope (def a (def () (scope))))"},
+		{"fun () {};", "(scope (def () (scope)))"},
 	}
 
 	for _, test := range tests {
