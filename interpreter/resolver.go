@@ -9,6 +9,7 @@ type FunctionCallType int32
 const (
 	CALL_TYPE_NONE FunctionCallType = iota
 	CALL_TYPE_FUNCTION
+	CALL_TYPE_METHOD
 )
 
 type Resolver struct {
@@ -107,6 +108,10 @@ func (r *Resolver) VisitTernaryCondition(expr *TernaryCondition) interface{} {
 }
 
 func (r *Resolver) VisitVariable(expr *Variable) interface{} {
+	if expr.Name.TokenType == TK_THIS && r.currentFunctionCallType != CALL_TYPE_METHOD {
+		r.errs = append(r.errs, expr.Name.ToError("Cannot reference 'this' outside of a method"))
+	}
+
 	if !r.scopes.IsEmpty() {
 		if val, ok := r.scopes.Peek()[expr.Name.Lexeme]; ok && !val {
 			r.errs = append(r.errs, expr.Name.ToError("Can't read local variable in its own initializer"))
@@ -140,6 +145,19 @@ func (r *Resolver) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
 	r.resolveFunction(stmt.Params, stmt.Body, CALL_TYPE_FUNCTION)
 
 	return nil
+}
+
+var ThisToken = Token{TokenType: TK_THIS, Lexeme: "this", Literal: nil, Line: 0}
+
+func (r *Resolver) resolveMethod(params []Token, body []Stmt) {
+	r.pushScope()
+
+	r.declare(ThisToken)
+	r.define("this")
+
+	r.resolveFunction(params, body, CALL_TYPE_METHOD)
+
+	r.popScope()
 }
 
 func (r *Resolver) resolveFunction(params []Token, body []Stmt, callType FunctionCallType) {
@@ -220,6 +238,17 @@ func (r *Resolver) VisitCall(expr *Call) interface{} {
 	return nil
 }
 
+func (r *Resolver) VisitGet(expr *Get) interface{} {
+	r.ResolveExpr(expr.Object)
+	return nil
+}
+
+func (r *Resolver) VisitSet(expr *Set) interface{} {
+	r.ResolveExpr(expr.Object)
+	r.ResolveExpr(expr.Value)
+	return nil
+}
+
 func (r *Resolver) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 	if r.currentFunctionCallType == CALL_TYPE_NONE {
 		return stmt.Keyword.ToRuntimeError(E_UNEXPECTED_RETURN, "Unexpected return in global scope")
@@ -229,6 +258,16 @@ func (r *Resolver) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 		r.ResolveExpr(stmt.Expression)
 	}
 
+	return nil
+}
+
+func (r *Resolver) VisitClassStmt(stmt *ClassStmt) interface{} {
+	r.declare(stmt.Name)
+	r.define(stmt.Name.Lexeme)
+
+	for _, m := range stmt.Methods {
+		r.resolveMethod(m.Params, m.Body)
+	}
 	return nil
 }
 

@@ -11,6 +11,7 @@ type StmtVisitor interface {
   VisitPrintStmt(expr *PrintStmt) interface{}
   VisitVarStmt(expr *VarStmt) interface{}
   VisitFunctionStmt(expr *FunctionStmt) interface{}
+  VisitClassStmt(expr *ClassStmt) interface{}
   VisitBlockStmt(expr *BlockStmt) interface{}
   VisitReturnStmt(expr *ReturnStmt) interface{}
 }
@@ -73,6 +74,16 @@ type FunctionStmt struct {
 
 func (e *FunctionStmt) Accept(visitor StmtVisitor) interface{} {
   return visitor.VisitFunctionStmt(e)
+}
+
+type ClassStmt struct {
+  Expr
+  Name Token
+  Methods []*FunctionStmt
+}
+
+func (e *ClassStmt) Accept(visitor StmtVisitor) interface{} {
+  return visitor.VisitClassStmt(e)
 }
 
 type BlockStmt struct {

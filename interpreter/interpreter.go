@@ -152,6 +152,11 @@ func (i *Interpreter) InterpretExpr(expr Expr) (interface{}, error) {
 	return result.Value, nil
 }
 
+func (i *Interpreter) evaluateExpression(expr Expr) *result {
+	r := expr.Accept(i).(*result)
+	return r
+}
+
 func (i *Interpreter) doArithmetic(expr *Binary, left *result, right *result, f func(l float64, r float64) float64) *result {
 	l1, ok := left.ToNumber()
 	if !ok {
@@ -402,6 +407,46 @@ func (i *Interpreter) VisitWhileStmt(expr *WhileStmt) interface{} {
 	return Void
 }
 
+func (i *Interpreter) VisitGet(expr *Get) interface{} {
+	object := i.evaluateExpression(expr.Object)
+	if object.IsError() {
+		return object
+	}
+
+	instance, ok := object.Value.(*KlassInstance)
+	if !ok {
+		return i.error(E_NOT_AN_OBJECT, expr.Name, "Expression does not evaluate to an object")
+	}
+
+	val, ok := instance.Get(expr.Name.Lexeme)
+	if !ok {
+		return i.error(E_UNDEFINED_OBJECT_PROPERTY, expr.Name, "Property is not defined on object")
+	}
+
+	return Result(val)
+}
+
+func (i *Interpreter) VisitSet(expr *Set) interface{} {
+	object := i.evaluateExpression(expr.Object)
+	if object.IsError() {
+		return object
+	}
+
+	value := i.evaluateExpression(expr.Value)
+	if value.IsError() {
+		return object
+	}
+
+	instance, ok := object.Value.(*KlassInstance)
+	if !ok {
+		return i.error(E_UNDEFINED_OBJECT_PROPERTY, expr.Name, "Property is not defined on object")
+	}
+
+	instance.Set(expr.Name.Lexeme, value.Value)
+
+	return value
+}
+
 func (i *Interpreter) VisitCall(expr *Call) interface{} {
 	rCallee := expr.Callee.Accept(i).(*result)
 	if rCallee.IsError() {
@@ -526,6 +571,11 @@ func (i *Interpreter) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 		returnValue = stmtResult.Value
 	}
 	return Return(returnValue)
+}
+
+func (i *Interpreter) VisitClassStmt(stmt *ClassStmt) interface{} {
+	i.environment.Define(stmt.Name.Lexeme, NewKlass(stmt.Name, stmt.Methods, i.environment))
+	return Void
 }
 
 func (i *Interpreter) error(errType int32, token Token, message string) *result {

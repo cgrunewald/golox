@@ -137,6 +137,8 @@ func main() {
 				"Assign: Name Token, Value Expr",
 				"Variable : Name Token",
 				"Call : Callee Expr, Paren Token, Arguments []Expr",
+				"Get : Object Expr, Name Token",
+				"Set : Object Expr, Name Token, Value Expr",
 				"Lambda : Name Token, Params []Token, Body []Stmt",
 			}},
 		{"stmt.go", "Stmt", []string{
@@ -146,7 +148,7 @@ func main() {
 			"PrintStmt : Expression Expr",
 			"VarStmt : Name Token, Initializer Expr",
 			"FunctionStmt : Name Token, Params []Token, Body []Stmt",
-			"ClassStmt : Name Token, VarDecls []VarStmt, FunDecls []FunctionStmt, Constructor FunctionStmt",
+			"ClassStmt : Name Token, Methods []*FunctionStmt",
 			"BlockStmt : Statements []Stmt",
 			"ReturnStmt : Keyword Token, Expression Expr",
 		}},

@@ -94,6 +94,14 @@ func (p *ASTPrinter) VisitAssign(expr *Assign) interface{} {
 	return p.parenthesized("= "+p.variable(expr.Name), expr.Value)
 }
 
+func (p *ASTPrinter) VisitGet(expr *Get) interface{} {
+	return p.parenthesized(fmt.Sprintf("get %q", expr.Name.Lexeme), expr.Object)
+}
+
+func (p *ASTPrinter) VisitSet(expr *Set) interface{} {
+	return p.parenthesized(fmt.Sprintf("set %q", expr.Name.Lexeme), expr.Object, expr.Value)
+}
+
 func (p *ASTPrinter) VisitIfStmt(stmt *IfStmt) interface{} {
 	expression := stmt.Condition.Accept(p)
 	thenBranch := stmt.ThenBranch.Accept(p)
@@ -156,6 +164,10 @@ func (p *ASTPrinter) parenthesized(name string, exprs ...Expr) string {
 	builder.WriteString(")")
 
 	return builder.String()
+}
+
+func (p *ASTPrinter) VisitClassStmt(stmt *ClassStmt) interface{} {
+	return ("class " + stmt.Name.Lexeme + ")")
 }
 
 func (p *ASTPrinter) PrintProgram(stmts []Stmt) string {

@@ -14,6 +14,8 @@ type ExprVisitor interface {
   VisitAssign(expr *Assign) interface{}
   VisitVariable(expr *Variable) interface{}
   VisitCall(expr *Call) interface{}
+  VisitGet(expr *Get) interface{}
+  VisitSet(expr *Set) interface{}
   VisitLambda(expr *Lambda) interface{}
 }
 
@@ -106,6 +108,27 @@ type Call struct {
 
 func (e *Call) Accept(visitor ExprVisitor) interface{} {
   return visitor.VisitCall(e)
+}
+
+type Get struct {
+  Expr
+  Object Expr
+  Name Token
+}
+
+func (e *Get) Accept(visitor ExprVisitor) interface{} {
+  return visitor.VisitGet(e)
+}
+
+type Set struct {
+  Expr
+  Object Expr
+  Name Token
+  Value Expr
+}
+
+func (e *Set) Accept(visitor ExprVisitor) interface{} {
+  return visitor.VisitSet(e)
 }
 
 type Lambda struct {

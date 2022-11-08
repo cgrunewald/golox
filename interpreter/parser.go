@@ -15,7 +15,7 @@ Grammar:
 
 program        → declaration* EOF ;
 
-declaration    → funDecl | varDecl | statement ;
+declaration    → funDecl | varDecl | classDecl | statement ;
 
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 funDecl        → "fun" IDENTIFIER "(" parameters? ")" blockStmt ;
@@ -30,7 +30,7 @@ forStmt				 → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expressio
 returnStmt     → "return" ( expression? ) ";" ;
 
 expression     → ternary ;
-assignment 	   → IDENTIFIER "=" assignment | ternary;
+assignment 	   → ( call "." )? IDENTIFIER "=" assignment | ternary;
 ternary				 → logical_or ( "?" expression ":" expression )? ;
 logical_or		 → logical_and ( "or" logical_and )* ;
 logical_and		 → equality ( "and" equality )* ;
@@ -39,7 +39,7 @@ comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term 					 → factor ( ( "-" | "+" ) factor )* ;
 factor  			 → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary | call ;
-call           → primary ( "(" arguments? ")" )* ;
+call           → primary ( ( "(" arguments? ")" ) | ( "." IDENTIFIER ) ) * ;
 primary        → IDENTIFIER | NUMBER | STRING | "true" | "false" | "nil" | lambda | ( "(" expression ")" ) ;
 
 lambda         → "fun" "(" parameters? ")" blockStmt ;
@@ -267,6 +267,10 @@ func (p *Parser) declaration() (Stmt, error) {
 		return p.functionDecl()
 	}
 
+	if p.match(TK_CLASS) {
+		return p.classDecl()
+	}
+
 	return p.statement()
 }
 
@@ -325,6 +329,36 @@ final:
 	return &FunctionStmt{Name: token, Params: tokList, Body: block.(*BlockStmt).Statements}, nil
 }
 
+func (p *Parser) classDecl() (Stmt, error) {
+	idToken, err := p.consume(TK_IDENTIFIER, "Expected function name")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = p.consume(TK_LEFT_BRACE, "Expected '{' to open class definition")
+	if err != nil {
+		return nil, err
+	}
+
+	functions := make([]*FunctionStmt, 0)
+
+	for p.match(TK_FUN) {
+		fStmt, err := p.functionDecl()
+		if err != nil {
+			return nil, err
+		}
+
+		functions = append(functions, fStmt.(*FunctionStmt))
+	}
+
+	_, err = p.consume(TK_RIGHT_BRACE, "Expected '}' to close class definition")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClassStmt{Name: idToken, Methods: functions}, nil
+}
+
 func (p *Parser) functionDecl() (Stmt, error) {
 	idToken, err := p.consume(TK_IDENTIFIER, "Expected function name")
 	if err != nil {
@@ -371,6 +405,8 @@ func (p *Parser) assignment() (Expr, error) {
 
 		if variable, ok := expr.(*Variable); ok {
 			return &Assign{Name: variable.Name, Value: value}, nil
+		} else if get, ok := expr.(*Get); ok {
+			return &Set{Object: get.Object, Name: get.Name, Value: value}, nil
 		}
 
 		return nil, p.error(equals, "Invalid assignment target.")
@@ -536,10 +572,21 @@ func (p *Parser) call() (Expr, error) {
 		return nil, err
 	}
 
-	for p.match(TK_LEFT_PAREN) {
-		primary, err = p.finishCall(primary)
-		if err != nil {
-			return nil, err
+	for {
+		if p.match(TK_LEFT_PAREN) {
+			primary, err = p.finishCall(primary)
+			if err != nil {
+				return nil, err
+			}
+		} else if p.match(TK_DOT) {
+			identifier, err := p.consume(TK_IDENTIFIER, "Expected identifier in a dot expression")
+			if err != nil {
+				return nil, err
+			}
+
+			primary = &Get{Object: primary, Name: identifier}
+		} else {
+			break
 		}
 	}
 
@@ -585,6 +632,8 @@ func (p *Parser) primary() (Expr, error) {
 	} else if p.match(TK_NUMBER, TK_STRING) {
 		return &Literal{Value: p.previous().Literal}, nil
 	} else if p.match(TK_IDENTIFIER) {
+		return &Variable{Name: p.previous()}, nil
+	} else if p.match(TK_THIS) {
 		return &Variable{Name: p.previous()}, nil
 	} else if p.match(TK_FUN) {
 		return p.lambda()

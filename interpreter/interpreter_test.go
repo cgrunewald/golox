@@ -292,6 +292,95 @@ func TestPrograms(t *testing.T) {
 	}
 }
 
+func TestClassPrograms(t *testing.T) {
+	tests := []struct {
+		program        string
+		expectedOutput []string
+	}{
+		{
+			`
+			class Foo {
+				fun bar() {
+					print "bar";
+				}
+			}
+
+			var a = Foo();
+			print Foo;
+			print a;
+			`,
+			[]string{"Foo", "Foo instance"},
+		},
+		{
+			`
+			class Foo {
+			}
+
+			var a = Foo();
+			a.b = "test";
+			print a.b;
+			`,
+			[]string{"test"},
+		},
+		{
+			`
+			class Foo {
+				fun go() {
+					print this.a;
+				}
+			}
+
+			var a = Foo();
+			a.a = "test1";
+			a.go();
+
+			var b = a.go;
+			a.a = "test";
+			b();
+
+			var c = Foo();
+			c.a = "cTest";
+			c.go();
+
+			c.go = b;
+			c.go();
+			`,
+			[]string{"test1", "test", "cTest", "test"},
+		},
+		{
+			`
+			class Foo {
+				fun init(id) {
+					this.id = id;
+				}
+
+				fun whoAmI() {
+					print this.id;
+				}
+			}
+
+			var a = Foo("a");
+			var b = Foo("b");
+			a.whoAmI();
+			b.whoAmI();
+
+			var c = a.whoAmI;
+			a.whoAmI = b.whoAmI;
+			b.whoAmI = c;
+
+			a.whoAmI();
+			b.whoAmI();
+			`,
+			[]string{"a", "b", "b", "a"},
+		},
+	}
+
+	for _, test := range tests {
+		doProgramTest(t, test.program, test.expectedOutput, []int32{})
+	}
+
+}
+
 func TestBadPrograms(t *testing.T) {
 	tests := []struct {
 		program        string
@@ -314,6 +403,34 @@ func TestBadPrograms(t *testing.T) {
 			`,
 			[]string{},
 			[]int32{E_UNEXPECTED_RETURN},
+		},
+		{
+			`
+			class Foo {}
+			print Foo().a;
+			`,
+			[]string{},
+			[]int32{E_UNDEFINED_OBJECT_PROPERTY},
+		},
+		{
+			`
+		  var a = "test";	
+			print a.a;
+			`,
+			[]string{},
+			[]int32{E_NOT_AN_OBJECT},
+		},
+		{
+			`
+			class Foo {
+				fun init(a) {
+
+				}
+			}
+			var b = Foo();
+			`,
+			[]string{},
+			[]int32{E_INVALID_ARGUMENTS},
 		},
 	}
 	for _, test := range tests {
