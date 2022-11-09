@@ -38,10 +38,15 @@ type FunctionCallable struct {
 	params             []Token
 	body               []Stmt
 	lexicalEnvironment *Environment
+	isInit             bool
 }
 
 func NewFunctionCallable(stmt *FunctionStmt, lexicalEnvironment *Environment) Callable {
-	return &FunctionCallable{name: stmt.Name, params: stmt.Params, body: stmt.Body, lexicalEnvironment: lexicalEnvironment}
+	return &FunctionCallable{name: stmt.Name, params: stmt.Params, body: stmt.Body, lexicalEnvironment: lexicalEnvironment, isInit: false}
+}
+
+func NewInitFunctionCallable(stmt *FunctionStmt, lexicalEnvironment *Environment) Callable {
+	return &FunctionCallable{name: stmt.Name, params: stmt.Params, body: stmt.Body, lexicalEnvironment: lexicalEnvironment, isInit: true}
 }
 
 func NewLambdaCallable(expr *Lambda, lexicalEnvironment *Environment) Callable {
@@ -69,6 +74,14 @@ func (n *FunctionCallable) Call(i *Interpreter, arguments []interface{}) interfa
 	r := i.executeBlock(n.body, environment).(*result)
 	if r.IsError() {
 		return r.Err
+	}
+
+	if n.isInit {
+		val, err := environment.GetAt(ThisToken, 0)
+		if err != nil {
+			return err
+		}
+		return val
 	}
 
 	if r.IsStmtReturn {

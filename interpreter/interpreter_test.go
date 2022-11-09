@@ -352,6 +352,7 @@ func TestClassPrograms(t *testing.T) {
 			class Foo {
 				fun init(id) {
 					this.id = id;
+					return this;
 				}
 
 				fun whoAmI() {
@@ -372,6 +373,22 @@ func TestClassPrograms(t *testing.T) {
 			b.whoAmI();
 			`,
 			[]string{"a", "b", "b", "a"},
+		},
+		{
+			`
+			class Foo {
+				fun init() {
+
+				}
+			}
+
+			var a = Foo();
+			var b = a.init();
+			if (a == b) {
+				print "same";
+			}
+			`,
+			[]string{"same"},
 		},
 	}
 
@@ -432,6 +449,26 @@ func TestBadPrograms(t *testing.T) {
 			[]string{},
 			[]int32{E_INVALID_ARGUMENTS},
 		},
+		{
+			`
+			class Foo {
+				fun init(a) {
+					return 1;
+				}
+			}
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_RETURN},
+		},
+		{
+			`
+			fun test() {
+				this.a = "foo";
+			}
+			`,
+			[]string{},
+			[]int32{E_UNDEFINED_VARIABLE},
+		},
 	}
 	for _, test := range tests {
 		doProgramTest(t, test.program, test.expectedOutput, test.expectedErrors)
@@ -468,7 +505,7 @@ func doProgramTest(t *testing.T, program string, expectedOutput []string, errorC
 				ok := errors.As(errs[i], &loxError)
 				if ok {
 					if loxError.runtimeErrorType != err {
-						t.Errorf("Error[%d] expected type %d, got type %d", i, err, loxError.runtimeErrorType)
+						t.Errorf("%s: Error[%d] expected type %d, got type %d", program, i, err, loxError.runtimeErrorType)
 					}
 				} else {
 					t.Errorf("Expected a lox error, got %v", errs[i])

@@ -77,5 +77,8 @@ func (i *KlassInstance) bind(property string, f *FunctionStmt) Callable {
 	methodEnv := NewEnclosedEnvironment(i.klass.env)
 	methodEnv.Define("this", i)
 
+	if property == "init" {
+		return NewInitFunctionCallable(f, methodEnv)
+	}
 	return NewFunctionCallable(f, methodEnv)
 }

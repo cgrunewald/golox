@@ -10,6 +10,7 @@ const (
 	CALL_TYPE_NONE FunctionCallType = iota
 	CALL_TYPE_FUNCTION
 	CALL_TYPE_METHOD
+	CALL_TYPE_INIT
 )
 
 type Resolver struct {
@@ -108,8 +109,8 @@ func (r *Resolver) VisitTernaryCondition(expr *TernaryCondition) interface{} {
 }
 
 func (r *Resolver) VisitVariable(expr *Variable) interface{} {
-	if expr.Name.TokenType == TK_THIS && r.currentFunctionCallType != CALL_TYPE_METHOD {
-		r.errs = append(r.errs, expr.Name.ToError("Cannot reference 'this' outside of a method"))
+	if expr.Name.TokenType == TK_THIS && r.currentFunctionCallType != CALL_TYPE_METHOD && r.currentFunctionCallType != CALL_TYPE_INIT {
+		r.errs = append(r.errs, expr.Name.ToRuntimeError(E_UNDEFINED_VARIABLE, "Cannot reference 'this' outside of a method"))
 	}
 
 	if !r.scopes.IsEmpty() {
@@ -149,13 +150,13 @@ func (r *Resolver) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
 
 var ThisToken = Token{TokenType: TK_THIS, Lexeme: "this", Literal: nil, Line: 0}
 
-func (r *Resolver) resolveMethod(params []Token, body []Stmt) {
+func (r *Resolver) resolveMethod(params []Token, body []Stmt, callType FunctionCallType) {
 	r.pushScope()
 
 	r.declare(ThisToken)
 	r.define("this")
 
-	r.resolveFunction(params, body, CALL_TYPE_METHOD)
+	r.resolveFunction(params, body, callType)
 
 	r.popScope()
 }
@@ -256,6 +257,12 @@ func (r *Resolver) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 
 	if stmt.Expression != nil {
 		r.ResolveExpr(stmt.Expression)
+
+		if r.currentFunctionCallType == CALL_TYPE_INIT {
+			if v, ok := stmt.Expression.(*Variable); !ok || v.Name.TokenType != TK_THIS {
+				r.errs = append(r.errs, stmt.Keyword.ToRuntimeError(E_UNEXPECTED_RETURN, "Unexpected return expression in `init`"))
+			}
+		}
 	}
 
 	return nil
@@ -266,7 +273,11 @@ func (r *Resolver) VisitClassStmt(stmt *ClassStmt) interface{} {
 	r.define(stmt.Name.Lexeme)
 
 	for _, m := range stmt.Methods {
-		r.resolveMethod(m.Params, m.Body)
+		callType := CALL_TYPE_METHOD
+		if m.Name.Lexeme == "init" {
+			callType = CALL_TYPE_INIT
+		}
+		r.resolveMethod(m.Params, m.Body, callType)
 	}
 	return nil
 }
