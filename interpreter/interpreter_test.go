@@ -390,6 +390,61 @@ func TestClassPrograms(t *testing.T) {
 			`,
 			[]string{"same"},
 		},
+		{
+			`
+			class Animal {
+				fun init() {
+					this.type = "unknown";
+				}
+
+				fun sound() {
+					print this.type;
+				}
+				
+				fun getLineage() {
+					return "animal";
+				}
+
+				fun test() {
+					return "a";
+				}
+			}
+
+			class Mammal < Animal {
+				fun init() {
+					this.type = "bat";
+				}
+
+				fun getType() {
+					return "mammal";
+				}
+
+				fun getLineage() {
+					return super.getLineage() + ":mammal";
+				}
+			}
+
+			class Bat < Mammal {
+				fun init() {
+					this.type = "bat";
+				}
+
+				fun getLineage() {
+					return super.getLineage() + ":bat";
+				}
+
+				fun test() {
+					return super.test() + "b";
+				}
+			}
+
+			var b = Bat();
+			b.sound();
+			print b.getLineage();
+			print b.test();
+			`,
+			[]string{"bat", "animal:mammal:bat", "ab"},
+		},
 	}
 
 	for _, test := range tests {

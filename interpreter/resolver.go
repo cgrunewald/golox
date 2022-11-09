@@ -149,12 +149,16 @@ func (r *Resolver) VisitFunctionStmt(stmt *FunctionStmt) interface{} {
 }
 
 var ThisToken = Token{TokenType: TK_THIS, Lexeme: "this", Literal: nil, Line: 0}
+var SuperToken = Token{TokenType: TK_SUPER, Lexeme: "super", Literal: nil, Line: 0}
 
 func (r *Resolver) resolveMethod(params []Token, body []Stmt, callType FunctionCallType) {
 	r.pushScope()
 
 	r.declare(ThisToken)
 	r.define("this")
+
+	r.declare(SuperToken)
+	r.define("super")
 
 	r.resolveFunction(params, body, callType)
 

@@ -6,15 +6,16 @@ type Klass struct {
 	name    Token
 	methods map[string]*FunctionStmt
 	env     *Environment
+	super   *Klass
 }
 
-func NewKlass(name Token, methods []*FunctionStmt, env *Environment) *Klass {
+func NewKlass(name Token, methods []*FunctionStmt, env *Environment, super *Klass) *Klass {
 	methodMap := make(map[string]*FunctionStmt)
 	for _, method := range methods {
 		methodMap[method.Name.Lexeme] = method
 	}
 
-	return &Klass{name: name, methods: methodMap, env: env}
+	return &Klass{name: name, methods: methodMap, env: env, super: super}
 }
 
 func (k *Klass) Arity() int {
@@ -44,6 +45,24 @@ type KlassInstance struct {
 	properties map[string]interface{}
 }
 
+type SuperReference struct {
+	klass    *Klass
+	instance *KlassInstance
+}
+
+func (r *SuperReference) Get(property string) (interface{}, bool) {
+	klass, method := r.instance.FindMethod(property, r.klass)
+	if method == nil {
+		return nil, false
+	}
+
+	return r.instance.bind(property, method, klass), true
+}
+
+type Gettable interface {
+	Get(property string) (interface{}, bool)
+}
+
 func NewInstance(klass *Klass) *KlassInstance {
 	return &KlassInstance{klass, make(map[string]interface{})}
 }
@@ -52,20 +71,32 @@ func (i *KlassInstance) String() string {
 	return fmt.Sprintf("%v instance", i.klass)
 }
 
+func (i *KlassInstance) FindMethod(property string, klass *Klass) (*Klass, *FunctionStmt) {
+	for klass != nil {
+		method, ok := klass.methods[property]
+		if ok {
+			return klass, method
+		}
+
+		klass = klass.super
+	}
+
+	return nil, nil
+}
+
 func (i *KlassInstance) Get(property string) (interface{}, bool) {
 	val, ok := i.properties[property]
 	if ok {
 		return val, ok
 	}
 
-	method, ok := i.klass.methods[property]
-	if !ok {
-		return nil, ok
+	klass, method := i.FindMethod(property, i.klass)
+	if method == nil {
+		return nil, false
 	}
 
 	// Bind and cache the binding
-	boundMethod := i.bind(property, method)
-	i.Set(property, boundMethod)
+	boundMethod := i.bind(property, method, klass)
 	return boundMethod, true
 }
 
@@ -73,9 +104,12 @@ func (i *KlassInstance) Set(property string, value interface{}) {
 	i.properties[property] = value
 }
 
-func (i *KlassInstance) bind(property string, f *FunctionStmt) Callable {
+func (i *KlassInstance) bind(property string, f *FunctionStmt, klass *Klass) Callable {
 	methodEnv := NewEnclosedEnvironment(i.klass.env)
 	methodEnv.Define("this", i)
+	if klass.super != nil {
+		methodEnv.Define("super", &SuperReference{klass: klass.super, instance: i})
+	}
 
 	if property == "init" {
 		return NewInitFunctionCallable(f, methodEnv)

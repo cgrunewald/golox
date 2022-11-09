@@ -19,7 +19,7 @@ declaration    → funDecl | varDecl | classDecl | statement ;
 
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 funDecl        → "fun" IDENTIFIER "(" parameters? ")" blockStmt ;
-classDecl      → "class" IDENTIFIER "{" ( varDecl | funDecl )* "}";
+classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" ( varDecl | funDecl )* "}";
 
 statement			 → exprStmt | printStmt | blockStmt | ifStmt | forStmt | whileStmt | returnStmt;
 exprStmt       → expression ";" ;
@@ -330,9 +330,19 @@ final:
 }
 
 func (p *Parser) classDecl() (Stmt, error) {
-	idToken, err := p.consume(TK_IDENTIFIER, "Expected function name")
+	idToken, err := p.consume(TK_IDENTIFIER, "Expected class name")
 	if err != nil {
 		return nil, err
+	}
+
+	var superToken *Token
+	if p.match(TK_LESS) {
+		tok, err := p.consume(TK_IDENTIFIER, "Expected superclass name")
+		if err != nil {
+			return nil, err
+		}
+
+		superToken = &tok
 	}
 
 	_, err = p.consume(TK_LEFT_BRACE, "Expected '{' to open class definition")
@@ -356,7 +366,7 @@ func (p *Parser) classDecl() (Stmt, error) {
 		return nil, err
 	}
 
-	return &ClassStmt{Name: idToken, Methods: functions}, nil
+	return &ClassStmt{Name: idToken, Methods: functions, SuperClass: superToken}, nil
 }
 
 func (p *Parser) functionDecl() (Stmt, error) {
@@ -634,6 +644,8 @@ func (p *Parser) primary() (Expr, error) {
 	} else if p.match(TK_IDENTIFIER) {
 		return &Variable{Name: p.previous()}, nil
 	} else if p.match(TK_THIS) {
+		return &Variable{Name: p.previous()}, nil
+	} else if p.match(TK_SUPER) {
 		return &Variable{Name: p.previous()}, nil
 	} else if p.match(TK_FUN) {
 		return p.lambda()

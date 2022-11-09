@@ -148,7 +148,7 @@ func main() {
 			"PrintStmt : Expression Expr",
 			"VarStmt : Name Token, Initializer Expr",
 			"FunctionStmt : Name Token, Params []Token, Body []Stmt",
-			"ClassStmt : Name Token, Methods []*FunctionStmt",
+			"ClassStmt : Name Token, SuperClass *Token, Methods []*FunctionStmt",
 			"BlockStmt : Statements []Stmt",
 			"ReturnStmt : Keyword Token, Expression Expr",
 		}},

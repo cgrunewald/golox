@@ -413,7 +413,7 @@ func (i *Interpreter) VisitGet(expr *Get) interface{} {
 		return object
 	}
 
-	instance, ok := object.Value.(*KlassInstance)
+	instance, ok := object.Value.(Gettable)
 	if !ok {
 		return i.error(E_NOT_AN_OBJECT, expr.Name, "Expression does not evaluate to an object")
 	}
@@ -574,7 +574,21 @@ func (i *Interpreter) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 }
 
 func (i *Interpreter) VisitClassStmt(stmt *ClassStmt) interface{} {
-	i.environment.Define(stmt.Name.Lexeme, NewKlass(stmt.Name, stmt.Methods, i.environment))
+	var superKlass *Klass
+	if stmt.SuperClass != nil {
+		val, err := i.environment.Get(*stmt.SuperClass)
+		if err != nil {
+			return Error(err)
+		}
+
+		sKlass, ok := val.(*Klass)
+		if !ok {
+			return i.error(E_INVALID_CLASS, *stmt.SuperClass, "Invalid super class")
+		}
+
+		superKlass = sKlass
+	}
+	i.environment.Define(stmt.Name.Lexeme, NewKlass(stmt.Name, stmt.Methods, i.environment, superKlass))
 	return Void
 }
 
