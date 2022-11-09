@@ -15,6 +15,11 @@ func NewKlass(name Token, methods []*FunctionStmt, env *Environment, super *Klas
 		methodMap[method.Name.Lexeme] = method
 	}
 
+	if super != nil {
+		env = NewEnclosedEnvironment(env)
+		env.Define("super", super)
+	}
+
 	return &Klass{name: name, methods: methodMap, env: env, super: super}
 }
 
@@ -28,9 +33,11 @@ func (k *Klass) Arity() int {
 
 func (k *Klass) Call(i *Interpreter, arguments []interface{}) interface{} {
 	instance := NewInstance(k)
-	if _, ok := k.methods["init"]; ok {
-		initMethod, _ := instance.Get("init")
-		initMethod.(Callable).Call(i, arguments)
+
+	klass, init := k.FindMethod("init")
+	if init != nil {
+		method := instance.bind("init", init, klass)
+		method.Call(i, arguments)
 	}
 
 	return instance
@@ -45,20 +52,6 @@ type KlassInstance struct {
 	properties map[string]interface{}
 }
 
-type SuperReference struct {
-	klass    *Klass
-	instance *KlassInstance
-}
-
-func (r *SuperReference) Get(property string) (interface{}, bool) {
-	klass, method := r.instance.FindMethod(property, r.klass)
-	if method == nil {
-		return nil, false
-	}
-
-	return r.instance.bind(property, method, klass), true
-}
-
 type Gettable interface {
 	Get(property string) (interface{}, bool)
 }
@@ -71,7 +64,20 @@ func (i *KlassInstance) String() string {
 	return fmt.Sprintf("%v instance", i.klass)
 }
 
-func (i *KlassInstance) FindMethod(property string, klass *Klass) (*Klass, *FunctionStmt) {
+func (k *Klass) GetSuperMethod(method Token, instance *KlassInstance) (interface{}, error) {
+	klass, methodDef := k.FindMethod(method.Lexeme)
+	if methodDef == nil {
+		return nil, NewRuntimeError(E_UNDEFINED_OBJECT_PROPERTY, method.Line, method.Lexeme, "Method does not exist on super")
+	}
+
+	// Bind and cache the binding
+	boundMethod := instance.bind(method.Lexeme, methodDef, klass)
+	return boundMethod, nil
+
+}
+
+func (k *Klass) FindMethod(property string) (*Klass, *FunctionStmt) {
+	klass := k
 	for klass != nil {
 		method, ok := klass.methods[property]
 		if ok {
@@ -90,7 +96,7 @@ func (i *KlassInstance) Get(property string) (interface{}, bool) {
 		return val, ok
 	}
 
-	klass, method := i.FindMethod(property, i.klass)
+	klass, method := i.klass.FindMethod(property)
 	if method == nil {
 		return nil, false
 	}
@@ -105,11 +111,8 @@ func (i *KlassInstance) Set(property string, value interface{}) {
 }
 
 func (i *KlassInstance) bind(property string, f *FunctionStmt, klass *Klass) Callable {
-	methodEnv := NewEnclosedEnvironment(i.klass.env)
+	methodEnv := NewEnclosedEnvironment(klass.env)
 	methodEnv.Define("this", i)
-	if klass.super != nil {
-		methodEnv.Define("super", &SuperReference{klass: klass.super, instance: i})
-	}
 
 	if property == "init" {
 		return NewInitFunctionCallable(f, methodEnv)

@@ -392,6 +392,31 @@ func TestClassPrograms(t *testing.T) {
 		},
 		{
 			`
+			class Foo {
+				fun init() {
+					this.a = "a";
+				}
+
+				fun do() {
+					return "do";
+				}
+			}
+
+			class Bar < Foo {
+				fun init() {
+					this.a = "b";
+				}
+				fun do() {
+					print super.do() + "do" + this.a;
+				}
+			}
+
+			Bar().do();
+			`,
+			[]string{"dodob"},
+		},
+		{
+			`
 			class Animal {
 				fun init() {
 					this.type = "unknown";
@@ -400,7 +425,7 @@ func TestClassPrograms(t *testing.T) {
 				fun sound() {
 					print this.type;
 				}
-				
+
 				fun getLineage() {
 					return "animal";
 				}

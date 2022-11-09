@@ -335,14 +335,14 @@ func (p *Parser) classDecl() (Stmt, error) {
 		return nil, err
 	}
 
-	var superToken *Token
+	var superToken *Variable
 	if p.match(TK_LESS) {
 		tok, err := p.consume(TK_IDENTIFIER, "Expected superclass name")
 		if err != nil {
 			return nil, err
 		}
 
-		superToken = &tok
+		superToken = &Variable{Name: tok}
 	}
 
 	_, err = p.consume(TK_LEFT_BRACE, "Expected '{' to open class definition")
@@ -646,7 +646,18 @@ func (p *Parser) primary() (Expr, error) {
 	} else if p.match(TK_THIS) {
 		return &Variable{Name: p.previous()}, nil
 	} else if p.match(TK_SUPER) {
-		return &Variable{Name: p.previous()}, nil
+		superTok := p.previous()
+		_, err := p.consume(TK_DOT, "expected dot after super call")
+		if err != nil {
+			return nil, err
+		}
+
+		call, err := p.consume(TK_IDENTIFIER, "expected method call after super")
+		if err != nil {
+			return nil, err
+		}
+
+		return &Super{Super: superTok, Call: call}, nil
 	} else if p.match(TK_FUN) {
 		return p.lambda()
 	} else if p.match(TK_LEFT_PAREN) {

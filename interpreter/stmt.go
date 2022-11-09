@@ -79,7 +79,7 @@ func (e *FunctionStmt) Accept(visitor StmtVisitor) interface{} {
 type ClassStmt struct {
   Expr
   Name Token
-  SuperClass *Token
+  SuperClass *Variable
   Methods []*FunctionStmt
 }
 

@@ -46,6 +46,9 @@ func (r *Resolver) declare(name Token) {
 }
 
 func (r *Resolver) resolveLocal(expr Expr, name Token) {
+	if name.TokenType == TK_SUPER {
+		println("test")
+	}
 	r.scopes.ForEach(func(i int, val map[string]bool) bool {
 		if _, exists := val[name.Lexeme]; exists {
 			r.i.resolve(expr, r.scopes.Length()-1-i)
@@ -53,6 +56,11 @@ func (r *Resolver) resolveLocal(expr Expr, name Token) {
 		}
 		return true
 	})
+}
+
+func (r *Resolver) VisitSuper(expr *Super) interface{} {
+	r.resolveLocal(expr, expr.Super)
+	return nil
 }
 
 func (r *Resolver) pushScope() {
@@ -156,9 +164,6 @@ func (r *Resolver) resolveMethod(params []Token, body []Stmt, callType FunctionC
 
 	r.declare(ThisToken)
 	r.define("this")
-
-	r.declare(SuperToken)
-	r.define("super")
 
 	r.resolveFunction(params, body, callType)
 
@@ -276,6 +281,13 @@ func (r *Resolver) VisitClassStmt(stmt *ClassStmt) interface{} {
 	r.declare(stmt.Name)
 	r.define(stmt.Name.Lexeme)
 
+	if stmt.SuperClass != nil {
+		r.i.evaluateExpression(stmt.SuperClass)
+		r.pushScope()
+		r.declare(SuperToken)
+		r.define("super")
+	}
+
 	for _, m := range stmt.Methods {
 		callType := CALL_TYPE_METHOD
 		if m.Name.Lexeme == "init" {
@@ -283,6 +295,11 @@ func (r *Resolver) VisitClassStmt(stmt *ClassStmt) interface{} {
 		}
 		r.resolveMethod(m.Params, m.Body, callType)
 	}
+
+	if stmt.SuperClass != nil {
+		r.popScope()
+	}
+
 	return nil
 }
 

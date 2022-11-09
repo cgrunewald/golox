@@ -36,7 +36,7 @@ func (e *Environment) GetAt(name Token, distance int) (interface{}, error) {
 func (e *Environment) ancestor(distance int) *Environment {
 	env := e
 	for i := 0; i < distance; i = i + 1 {
-		env = e.Enclosing
+		env = env.Enclosing
 	}
 	return env
 }

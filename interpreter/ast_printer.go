@@ -90,6 +90,10 @@ func (p *ASTPrinter) VisitBlockStmt(stmt *BlockStmt) interface{} {
 	return p.printStatements(stmt.Statements)
 }
 
+func (p *ASTPrinter) VisitSuper(stmt *Super) interface{} {
+	return ""
+}
+
 func (p *ASTPrinter) VisitAssign(expr *Assign) interface{} {
 	return p.parenthesized("= "+p.variable(expr.Name), expr.Value)
 }

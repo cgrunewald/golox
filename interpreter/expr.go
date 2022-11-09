@@ -14,6 +14,7 @@ type ExprVisitor interface {
   VisitAssign(expr *Assign) interface{}
   VisitVariable(expr *Variable) interface{}
   VisitCall(expr *Call) interface{}
+  VisitSuper(expr *Super) interface{}
   VisitGet(expr *Get) interface{}
   VisitSet(expr *Set) interface{}
   VisitLambda(expr *Lambda) interface{}
@@ -108,6 +109,16 @@ type Call struct {
 
 func (e *Call) Accept(visitor ExprVisitor) interface{} {
   return visitor.VisitCall(e)
+}
+
+type Super struct {
+  Expr
+  Super Token
+  Call Token
+}
+
+func (e *Super) Accept(visitor ExprVisitor) interface{} {
+  return visitor.VisitSuper(e)
 }
 
 type Get struct {

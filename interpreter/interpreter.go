@@ -426,6 +426,35 @@ func (i *Interpreter) VisitGet(expr *Get) interface{} {
 	return Result(val)
 }
 
+func (i *Interpreter) VisitSuper(expr *Super) interface{} {
+	superVar := i.lookupVariable(expr.Super, expr).(*result)
+	if superVar.IsError() {
+		return superVar
+	}
+
+	klass, ok := superVar.Value.(*Klass)
+	if !ok {
+		return i.error(E_NOT_AN_OBJECT, expr.Super, "super variable is not an object")
+	}
+
+	distance := i.locals[expr]
+	thisInstance, err := i.environment.GetAt(ThisToken, distance-1)
+	if err != nil {
+		return Error(err)
+	}
+
+	this, ok := thisInstance.(*KlassInstance)
+	if !ok {
+		panic("should never get here")
+	}
+
+	result, err := klass.GetSuperMethod(expr.Call, this)
+	if err != nil {
+		return Error(err)
+	}
+	return Result(result)
+}
+
 func (i *Interpreter) VisitSet(expr *Set) interface{} {
 	object := i.evaluateExpression(expr.Object)
 	if object.IsError() {
@@ -576,14 +605,14 @@ func (i *Interpreter) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 func (i *Interpreter) VisitClassStmt(stmt *ClassStmt) interface{} {
 	var superKlass *Klass
 	if stmt.SuperClass != nil {
-		val, err := i.environment.Get(*stmt.SuperClass)
-		if err != nil {
-			return Error(err)
+		val := i.evaluateExpression(stmt.SuperClass)
+		if val.IsError() {
+			return val
 		}
 
-		sKlass, ok := val.(*Klass)
+		sKlass, ok := val.Value.(*Klass)
 		if !ok {
-			return i.error(E_INVALID_CLASS, *stmt.SuperClass, "Invalid super class")
+			return i.error(E_INVALID_CLASS, stmt.SuperClass.Name, "Invalid super class")
 		}
 
 		superKlass = sKlass
