@@ -282,7 +282,7 @@ func (r *Resolver) VisitClassStmt(stmt *ClassStmt) interface{} {
 	r.define(stmt.Name.Lexeme)
 
 	if stmt.SuperClass != nil {
-		r.i.evaluateExpression(stmt.SuperClass)
+		r.ResolveExpr(stmt.SuperClass)
 		r.pushScope()
 		r.declare(SuperToken)
 		r.define("super")

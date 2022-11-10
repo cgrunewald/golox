@@ -470,6 +470,60 @@ func TestClassPrograms(t *testing.T) {
 			`,
 			[]string{"bat", "animal:mammal:bat", "ab"},
 		},
+		{
+			`
+			fun generateClass() {
+				class Alpha {
+					fun init() {
+						this.a = 1;
+					}
+
+					fun test() {
+						return "Alpha";
+					}
+				}
+
+				class Foo < Alpha {
+					fun init() {
+						super.init();
+						this.b = 2;
+					}
+
+					fun test() {
+						return super.test() + ":Foo";
+					}
+
+					fun generateAnotherClass(val) {
+						class Bar < Foo {
+							fun init(val) {
+								super.init();
+								this.c = val;
+							}
+
+							fun test() {
+								return super.test() + ":Bar";
+							}
+
+							fun addEmUp() {
+								return this.a + this.b + this.c;
+							}
+						}	
+						return Bar(val);
+					}
+				}
+
+				return Foo();
+			}
+
+			var k = generateClass();
+			print k;
+			var k2 = k.generateAnotherClass(3);
+			print k2;
+			print k2.test();
+			print k2.addEmUp();
+			`,
+			[]string{"Foo instance", "Bar instance", "Alpha:Foo:Bar", "6"},
+		},
 	}
 
 	for _, test := range tests {
