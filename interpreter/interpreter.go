@@ -23,28 +23,32 @@ type Interpreter struct {
 }
 
 type result struct {
-	Value        interface{}
-	IsStmtReturn bool
-	Err          error
+	Value          interface{}
+	IsStmtReturn   bool
+	IsStmtBreak    bool
+	IsStmtContinue bool
+	Err            error
 }
 
 func Result(value interface{}) *result {
-	return &result{value, false, nil}
+	return &result{Value: value}
 }
 
 func Error(err error) *result {
-	return &result{nil, false, err}
+	return &result{Err: err}
 }
 
 func Return(value interface{}) *result {
-	return &result{value, true, nil}
+	return &result{Value: value, IsStmtReturn: true}
 }
 
 func (r *result) IsBlockBreaking() bool {
-	return r.IsError() || r.IsStmtReturn
+	return r.IsError() || r.IsStmtReturn || r.IsStmtBreak || r.IsStmtContinue
 }
 
 var Void = Result(nil)
+var Break = &result{IsStmtBreak: true}
+var Continue = &result{IsStmtContinue: true}
 
 func (r *result) IsError() bool {
 	return r.Err != nil
@@ -399,8 +403,19 @@ func (i *Interpreter) VisitWhileStmt(expr *WhileStmt) interface{} {
 		}
 
 		rBody := expr.Body.Accept(i).(*result)
-		if rBody.IsBlockBreaking() {
+		if rBody.IsStmtBreak {
+			break
+		}
+
+		if rBody.IsBlockBreaking() && !rBody.IsStmtContinue {
 			return rBody
+		}
+
+		if expr.Increment != nil {
+			rIncr := expr.Increment.Accept(i).(*result)
+			if rIncr.IsError() {
+				return rIncr
+			}
 		}
 	}
 
@@ -600,6 +615,14 @@ func (i *Interpreter) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 		returnValue = stmtResult.Value
 	}
 	return Return(returnValue)
+}
+
+func (i *Interpreter) VisitBreakStmt(stmt *BreakStmt) interface{} {
+	return Break
+}
+
+func (i *Interpreter) VisitContinueStmt(stmt *ContinueStmt) interface{} {
+	return Continue
 }
 
 func (i *Interpreter) VisitClassStmt(stmt *ClassStmt) interface{} {

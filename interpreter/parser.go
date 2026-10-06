@@ -21,13 +21,15 @@ varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
 funDecl        → "fun" IDENTIFIER "(" parameters? ")" blockStmt ;
 classDecl      → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" ( varDecl | funDecl )* "}";
 
-statement			 → exprStmt | printStmt | blockStmt | ifStmt | forStmt | whileStmt | returnStmt;
+statement			 → exprStmt | printStmt | blockStmt | ifStmt | forStmt | whileStmt | returnStmt | breakStmt | continueStmt;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 ifStmt				 → "if" "(" expression ")" statement ( "else" statement )? ;
 whileStmt			 → "while" "(" expression ")" statement ;
 forStmt				 → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ;
 returnStmt     → "return" ( expression? ) ";" ;
+breakStmt      → "break" ";" ;
+continueStmt   → "continue" ";" ;
 
 expression     → ternary ;
 assignment 	   → ( call "." )? IDENTIFIER "=" assignment | ternary;
@@ -77,7 +79,37 @@ func (p *Parser) statement() (Stmt, error) {
 		return p.returnStmt()
 	}
 
+	if p.match(TK_BREAK) {
+		return p.breakStmt()
+	}
+
+	if p.match(TK_CONTINUE) {
+		return p.continueStmt()
+	}
+
 	return p.exprStmt()
+}
+
+func (p *Parser) breakStmt() (Stmt, error) {
+	keyword := p.previous()
+
+	_, err := p.consume(TK_SEMICOLON, "expected semicolon after break")
+	if err != nil {
+		return nil, err
+	}
+
+	return &BreakStmt{Keyword: keyword}, nil
+}
+
+func (p *Parser) continueStmt() (Stmt, error) {
+	keyword := p.previous()
+
+	_, err := p.consume(TK_SEMICOLON, "expected semicolon after continue")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ContinueStmt{Keyword: keyword}, nil
 }
 
 func (p *Parser) returnStmt() (Stmt, error) {
@@ -205,15 +237,13 @@ func (p *Parser) forStmt() (Stmt, error) {
 		return nil, err
 	}
 
-	if incrExpr != nil {
-		stmt = &BlockStmt{Statements: []Stmt{stmt, &ExprStmt{Expression: incrExpr}}}
-	}
-
 	if condExpr == nil {
 		condExpr = &Literal{Value: true}
 	}
 
-	stmt = &WhileStmt{Condition: condExpr, Body: stmt}
+	// The increment is kept separate from the body (rather than appended to it
+	// in a block) so that a `continue` in the body still runs the increment.
+	stmt = &WhileStmt{Condition: condExpr, Body: stmt, Increment: incrExpr}
 
 	if initStmt != nil {
 		stmt = &BlockStmt{Statements: []Stmt{initStmt, stmt}}

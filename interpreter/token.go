@@ -52,27 +52,31 @@ const (
 	TK_TRUE
 	TK_VAR
 	TK_WHILE
+	TK_BREAK
+	TK_CONTINUE
 
 	TK_EOF
 )
 
 var TokenTypeKeywords = map[string]TokenType{
-	"and":    TK_AND,
-	"class":  TK_CLASS,
-	"else":   TK_ELSE,
-	"false":  TK_FALSE,
-	"for":    TK_FOR,
-	"fun":    TK_FUN,
-	"if":     TK_IF,
-	"nil":    TK_NIL,
-	"or":     TK_OR,
-	"print":  TK_PRINT,
-	"return": TK_RETURN,
-	"super":  TK_SUPER,
-	"this":   TK_THIS,
-	"true":   TK_TRUE,
-	"var":    TK_VAR,
-	"while":  TK_WHILE,
+	"and":      TK_AND,
+	"class":    TK_CLASS,
+	"else":     TK_ELSE,
+	"false":    TK_FALSE,
+	"for":      TK_FOR,
+	"fun":      TK_FUN,
+	"if":       TK_IF,
+	"nil":      TK_NIL,
+	"or":       TK_OR,
+	"print":    TK_PRINT,
+	"return":   TK_RETURN,
+	"super":    TK_SUPER,
+	"this":     TK_THIS,
+	"true":     TK_TRUE,
+	"var":      TK_VAR,
+	"while":    TK_WHILE,
+	"break":    TK_BREAK,
+	"continue": TK_CONTINUE,
 }
 
 var TokenTypeNames = map[TokenType]string{
@@ -117,6 +121,8 @@ var TokenTypeNames = map[TokenType]string{
 	TK_EOF:           "TK_EOF",
 	TK_QUESTION:      "TK_QUESTION",
 	TK_COLON:         "TK_COLON",
+	TK_BREAK:         "TK_BREAK",
+	TK_CONTINUE:      "TK_CONTINUE",
 }
 
 type Token struct {

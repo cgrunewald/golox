@@ -144,7 +144,7 @@ func main() {
 			}},
 		{"stmt.go", "Stmt", []string{
 			"IfStmt : Condition Expr, ThenBranch Stmt, ElseBranch Stmt",
-			"WhileStmt : Condition Expr, Body Stmt",
+			"WhileStmt : Condition Expr, Body Stmt, Increment Expr",
 			"ExprStmt: Expression Expr",
 			"PrintStmt : Expression Expr",
 			"VarStmt : Name Token, Initializer Expr",
@@ -152,6 +152,8 @@ func main() {
 			"ClassStmt : Name Token, SuperClass *Variable, Methods []*FunctionStmt",
 			"BlockStmt : Statements []Stmt",
 			"ReturnStmt : Keyword Token, Expression Expr",
+			"BreakStmt : Keyword Token",
+			"ContinueStmt : Keyword Token",
 		}},
 	}
 

@@ -532,6 +532,125 @@ func TestClassPrograms(t *testing.T) {
 
 }
 
+func TestLoopControlPrograms(t *testing.T) {
+	tests := []struct {
+		program        string
+		expectedOutput []string
+	}{
+		{
+			`
+			var i = 0;
+			while (true) {
+				if (i == 3) break;
+				print i;
+				i = i + 1;
+			}
+			print "done";
+			`,
+			[]string{"0", "1", "2", "done"},
+		},
+		{
+			`
+			for (var i = 0; i < 10; i = i + 1) {
+				if (i == 2) break;
+				print i;
+			}
+			`,
+			[]string{"0", "1"},
+		},
+		{
+			`
+			for (var i = 0; i < 5; i = i + 1) {
+				if (i == 1 or i == 3) continue;
+				print i;
+			}
+			`,
+			[]string{"0", "2", "4"},
+		},
+		{
+			`
+			var i = 0;
+			while (i < 5) {
+				i = i + 1;
+				if (i == 2) continue;
+				print i;
+			}
+			`,
+			[]string{"1", "3", "4", "5"},
+		},
+		{
+			`
+			// break and continue only affect the innermost loop
+			for (var i = 0; i < 3; i = i + 1) {
+				for (var j = 0; j < 3; j = j + 1) {
+					if (j == 1) continue;
+					if (j == 2) break;
+					print i + ":" + j;
+				}
+			}
+			`,
+			[]string{"0:0", "1:0", "2:0"},
+		},
+		{
+			`
+			// break from inside nested blocks with local variables
+			for (var i = 0; i < 3; i = i + 1) {
+				var a = i * 2;
+				{
+					var b = a + 1;
+					if (b > 2) {
+						break;
+					}
+					print b;
+				}
+			}
+			`,
+			[]string{"1"},
+		},
+		{
+			`
+			// continue with an else branch
+			for (var i = 0; i < 4; i = i + 1) {
+				if (i == 1) continue; else print i;
+			}
+			`,
+			[]string{"0", "2", "3"},
+		},
+		{
+			`
+			// a loop inside a function, with return still working
+			fun firstOver(limit) {
+				for (var i = 0; ; i = i + 1) {
+					if (i < limit) continue;
+					return i;
+				}
+			}
+			print firstOver(4);
+			`,
+			[]string{"4"},
+		},
+		{
+			`
+			// closures created in a loop still work with break
+			var fns = nil;
+			for (var i = 0; i < 10; i = i + 1) {
+				if (i == 2) {
+					var captured = i;
+					fns = fun () { return captured; };
+					break;
+				}
+			}
+			print fns();
+			`,
+			[]string{"2"},
+		},
+	}
+
+	for _, test := range tests {
+		doProgramTest(t, test.program, test.expectedOutput, []int32{})
+	}
+}
+
 func TestBadPrograms(t *testing.T) {
 	tests := []struct {
 		program        string
@@ -602,6 +721,40 @@ func TestBadPrograms(t *testing.T) {
 			`,
 			[]string{},
 			[]int32{E_UNDEFINED_VARIABLE},
+		},
+		{
+			`
+			break;
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_LOOP_CONTROL},
+		},
+		{
+			`
+			if (true) print 1; else continue;
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_LOOP_CONTROL},
+		},
+		{
+			`
+			while (true) {
+				fun inner() {
+					break;
+				}
+			}
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_LOOP_CONTROL},
+		},
+		{
+			`
+			for (;;) {
+				var f = fun () { continue; };
+			}
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_LOOP_CONTROL},
 		},
 	}
 	for _, test := range tests {

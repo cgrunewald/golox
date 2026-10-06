@@ -128,8 +128,11 @@ func TestParseControlFlowStatements(t *testing.T) {
 		{"while (true) 1;", "(scope (while true 1))"},
 		{"for (;;) 1;", "(scope (while true 1))"},
 		{"for (;;) {1;}", "(scope (while true (scope 1)))"},
-		{"for (var i = 0; i < 10; i = i + 1) print i;", "(scope (scope (def i 0) (while (< (var i) 10) (scope (print (var i)) (= (var i) (+ (var i) 1))))))"},
+		{"for (var i = 0; i < 10; i = i + 1) print i;", "(scope (scope (def i 0) (while (< (var i) 10) (print (var i)) (= (var i) (+ (var i) 1)))))"},
 		{"for (var i = 0; i < 10;) print i;", "(scope (scope (def i 0) (while (< (var i) 10) (print (var i)))))"},
+		{"while (true) break;", "(scope (while true (break)))"},
+		{"while (true) continue;", "(scope (while true (continue)))"},
+		{"for (;; 1) {break; continue;}", "(scope (while true (scope (break) (continue)) 1))"},
 	}
 
 	for _, test := range tests {
@@ -169,6 +172,8 @@ func TestParseErrors(t *testing.T) {
 		{"for () print 1;", 1, 0},
 		{"for (;) print 1;", 1, 0},
 		{"for (;;) print 1;", 0, 1},
+		{"break", 1, 0},
+		{"while (true) continue print 1;", 1, 0},
 	}
 
 	for _, test := range tests {

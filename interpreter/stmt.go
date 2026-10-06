@@ -14,6 +14,8 @@ type StmtVisitor interface {
   VisitClassStmt(expr *ClassStmt) interface{}
   VisitBlockStmt(expr *BlockStmt) interface{}
   VisitReturnStmt(expr *ReturnStmt) interface{}
+  VisitBreakStmt(expr *BreakStmt) interface{}
+  VisitContinueStmt(expr *ContinueStmt) interface{}
 }
 
 type IfStmt struct {
@@ -31,6 +33,7 @@ type WhileStmt struct {
   Expr
   Condition Expr
   Body Stmt
+  Increment Expr
 }
 
 func (e *WhileStmt) Accept(visitor StmtVisitor) interface{} {
@@ -104,6 +107,24 @@ type ReturnStmt struct {
 
 func (e *ReturnStmt) Accept(visitor StmtVisitor) interface{} {
   return visitor.VisitReturnStmt(e)
+}
+
+type BreakStmt struct {
+  Expr
+  Keyword Token
+}
+
+func (e *BreakStmt) Accept(visitor StmtVisitor) interface{} {
+  return visitor.VisitBreakStmt(e)
+}
+
+type ContinueStmt struct {
+  Expr
+  Keyword Token
+}
+
+func (e *ContinueStmt) Accept(visitor StmtVisitor) interface{} {
+  return visitor.VisitContinueStmt(e)
 }
 
 
