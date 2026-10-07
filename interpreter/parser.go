@@ -580,7 +580,7 @@ func (p *Parser) factor() (Expr, error) {
 		return nil, err
 	}
 
-	for p.match(TK_STAR, TK_SLASH) {
+	for p.match(TK_STAR, TK_SLASH, TK_PERCENT) {
 		operator := p.previous()
 		right, err := p.unary()
 		if err != nil {

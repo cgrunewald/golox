@@ -1,6 +1,9 @@
 package interpreter
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 type InterpreterConfig struct {
 	PrintFunc           func(string)
@@ -232,6 +235,12 @@ func (i *Interpreter) VisitBinary(expr *Binary) interface{} {
 			return i.error(E_DIVIDE_BY_ZERO, expr.Operator, "Cannot divide by zero.")
 		}
 		return i.doArithmetic(expr, left, right, func(l float64, r float64) float64 { return l / r })
+	case TK_PERCENT:
+		if num, ok := right.ToNumber(); ok && num == 0.0 {
+			return i.error(E_DIVIDE_BY_ZERO, expr.Operator, "Cannot take modulo by zero.")
+		}
+		// Like C's fmod: the result takes the sign of the dividend.
+		return i.doArithmetic(expr, left, right, math.Mod)
 	case TK_BANG_EQUAL:
 		return Result(left.Value != right.Value)
 	case TK_EQUAL_EQUAL:
