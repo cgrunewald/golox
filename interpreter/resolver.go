@@ -18,6 +18,7 @@ type Resolver struct {
 	i                       *Interpreter
 	errs                    []error
 	currentFunctionCallType FunctionCallType
+	loopDepth               int
 }
 
 func NewResolver(i *Interpreter) *Resolver {
@@ -174,6 +175,10 @@ func (r *Resolver) resolveFunction(params []Token, body []Stmt, callType Functio
 	enclosingFunction := r.currentFunctionCallType
 	r.currentFunctionCallType = callType
 
+	// break/continue cannot cross a function boundary
+	enclosingLoopDepth := r.loopDepth
+	r.loopDepth = 0
+
 	r.pushScope()
 
 	for _, param := range params {
@@ -186,6 +191,7 @@ func (r *Resolver) resolveFunction(params []Token, body []Stmt, callType Functio
 	r.popScope()
 
 	r.currentFunctionCallType = enclosingFunction
+	r.loopDepth = enclosingLoopDepth
 }
 
 func (r *Resolver) VisitLambda(expr *Lambda) interface{} {
@@ -225,7 +231,7 @@ func (r *Resolver) VisitIfStmt(stmt *IfStmt) interface{} {
 	r.ResolveExpr(stmt.Condition)
 	r.ResolveStmt(stmt.ThenBranch)
 	if stmt.ElseBranch != nil {
-		r.ResolveStmt(stmt.ThenBranch)
+		r.ResolveStmt(stmt.ElseBranch)
 	}
 
 	return nil
@@ -233,7 +239,30 @@ func (r *Resolver) VisitIfStmt(stmt *IfStmt) interface{} {
 
 func (r *Resolver) VisitWhileStmt(stmt *WhileStmt) interface{} {
 	r.ResolveExpr(stmt.Condition)
+
+	r.loopDepth++
 	r.ResolveStmt(stmt.Body)
+	r.loopDepth--
+
+	if stmt.Increment != nil {
+		r.ResolveExpr(stmt.Increment)
+	}
+
+	return nil
+}
+
+func (r *Resolver) VisitBreakStmt(stmt *BreakStmt) interface{} {
+	if r.loopDepth == 0 {
+		r.errs = append(r.errs, stmt.Keyword.ToRuntimeError(E_UNEXPECTED_LOOP_CONTROL, "Can't use 'break' outside of a loop"))
+	}
+
+	return nil
+}
+
+func (r *Resolver) VisitContinueStmt(stmt *ContinueStmt) interface{} {
+	if r.loopDepth == 0 {
+		r.errs = append(r.errs, stmt.Keyword.ToRuntimeError(E_UNEXPECTED_LOOP_CONTROL, "Can't use 'continue' outside of a loop"))
+	}
 
 	return nil
 }

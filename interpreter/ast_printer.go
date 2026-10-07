@@ -122,7 +122,20 @@ func (p *ASTPrinter) VisitWhileStmt(stmt *WhileStmt) interface{} {
 	expression := stmt.Condition.Accept(p)
 	statement := stmt.Body.Accept(p)
 
+	if stmt.Increment != nil {
+		increment := stmt.Increment.Accept(p)
+		return fmt.Sprintf("(while %s %s %s)", expression, statement, increment)
+	}
+
 	return fmt.Sprintf("(while %s %s)", expression, statement)
+}
+
+func (p *ASTPrinter) VisitBreakStmt(stmt *BreakStmt) interface{} {
+	return "(break)"
+}
+
+func (p *ASTPrinter) VisitContinueStmt(stmt *ContinueStmt) interface{} {
+	return "(continue)"
 }
 
 func (p *ASTPrinter) VisitCall(expr *Call) interface{} {
