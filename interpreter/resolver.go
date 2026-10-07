@@ -47,9 +47,6 @@ func (r *Resolver) declare(name Token) {
 }
 
 func (r *Resolver) resolveLocal(expr Expr, name Token) {
-	if name.TokenType == TK_SUPER {
-		println("test")
-	}
 	r.scopes.ForEach(func(i int, val map[string]bool) bool {
 		if _, exists := val[name.Lexeme]; exists {
 			r.i.resolve(expr, r.scopes.Length()-1-i)
@@ -290,7 +287,7 @@ func (r *Resolver) VisitSet(expr *Set) interface{} {
 
 func (r *Resolver) VisitReturnStmt(stmt *ReturnStmt) interface{} {
 	if r.currentFunctionCallType == CALL_TYPE_NONE {
-		return stmt.Keyword.ToRuntimeError(E_UNEXPECTED_RETURN, "Unexpected return in global scope")
+		r.errs = append(r.errs, stmt.Keyword.ToRuntimeError(E_UNEXPECTED_RETURN, "Unexpected return in global scope"))
 	}
 
 	if stmt.Expression != nil {

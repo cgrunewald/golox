@@ -723,6 +723,24 @@ func TestBadPrograms(t *testing.T) {
 			[]int32{E_UNDEFINED_VARIABLE},
 		},
 		{
+			// top-level return is a static (resolver) error, so nothing runs
+			`
+			print "before";
+			return;
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_RETURN},
+		},
+		{
+			`
+			{
+				return 1;
+			}
+			`,
+			[]string{},
+			[]int32{E_UNEXPECTED_RETURN},
+		},
+		{
 			`
 			break;
 			`,
