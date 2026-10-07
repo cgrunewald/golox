@@ -17,6 +17,7 @@ const (
 	TK_SEMICOLON
 	TK_SLASH
 	TK_STAR
+	TK_PERCENT
 	TK_QUESTION
 	TK_COLON
 
@@ -91,6 +92,7 @@ var TokenTypeNames = map[TokenType]string{
 	TK_SEMICOLON:     "TK_SEMICOLON",
 	TK_SLASH:         "TK_SLASH",
 	TK_STAR:          "TK_STAR",
+	TK_PERCENT:       "TK_PERCENT",
 	TK_BANG:          "TK_BANG",
 	TK_BANG_EQUAL:    "TK_BANG_EQUAL",
 	TK_EQUAL:         "TK_EQUAL",

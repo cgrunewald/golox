@@ -98,6 +98,9 @@ func (scanner *Scanner) scanToken() {
 	case "*":
 		scanner.addToken(TK_STAR, nil)
 		break
+	case "%":
+		scanner.addToken(TK_PERCENT, nil)
+		break
 	case "!":
 		if scanner.match("=") {
 			scanner.addToken(TK_BANG_EQUAL, nil)

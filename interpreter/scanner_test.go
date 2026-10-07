@@ -40,6 +40,23 @@ func TestScanSimple(t *testing.T) {
 	AssertScansEqual(t, expected, tokens)
 }
 
+func TestScanPercent(t *testing.T) {
+	scanner := NewScanner("7 % 3")
+	expected := []Token{
+		NewToken(TK_NUMBER, "7", 7.0, 1),
+		NewToken(TK_PERCENT, "%", nil, 1),
+		NewToken(TK_NUMBER, "3", 3.0, 1),
+		NewToken(TK_EOF, "", nil, 1),
+	}
+
+	tokens := scanner.ScanTokens()
+	if scanner.HasError() {
+		t.Fatalf("Encountered error: %v", scanner.Errors())
+	}
+
+	AssertScansEqual(t, expected, tokens)
+}
+
 func TestScanDigit(t *testing.T) {
 	scanner := NewScanner("12.34 == 12.34")
 	expected := []Token{
